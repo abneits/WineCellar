@@ -126,16 +126,34 @@ func staticFileHandler(dir string) http.Handler {
 
 		// Try path.html (Next.js static export generates /page.html)
 		if _, err := os.Stat(path + ".html"); err == nil {
-			http.ServeFile(w, r, path+".html")
+			serveFileContent(w, r, path+".html")
 			return
 		}
 
 		// Try path/index.html
 		if _, err := os.Stat(filepath.Join(path, "index.html")); err == nil {
-			http.ServeFile(w, r, filepath.Join(path, "index.html"))
+			serveFileContent(w, r, filepath.Join(path, "index.html"))
 			return
 		}
 
 		http.NotFound(w, r)
 	})
+}
+
+// serveFileContent serves a file using http.ServeContent to avoid http.ServeFile's
+// redirect when the URL path ends with '/' but the served file is not a directory.
+// Without this, GET / → serve static/index.html → redirect to ../ → loops back to /.
+func serveFileContent(w http.ResponseWriter, r *http.Request, filePath string) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeContent(w, r, filePath, fi.ModTime(), f)
 }
