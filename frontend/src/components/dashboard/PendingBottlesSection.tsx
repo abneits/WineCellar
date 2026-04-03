@@ -29,7 +29,7 @@ function PendingWineCard({ wine }: { wine: PendingWine }) {
         </p>
       </div>
       <Link
-        href={`/wines/${wine.id}/edit`}
+        href={`/cellar/${wine.id}`}
         className="flex items-center gap-1 text-gold text-xs font-medium shrink-0"
       >
         <PenLine size={12} />
