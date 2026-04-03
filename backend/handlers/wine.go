@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 
 	"wine-cellar/models"
@@ -286,6 +287,13 @@ func jsonResponse(w http.ResponseWriter, data interface{}) {
 }
 
 func jsonResponseStatus(w http.ResponseWriter, data interface{}, status int) {
+	// Go encodes nil slices as JSON null; frontend expects [].
+	if data != nil {
+		v := reflect.ValueOf(data)
+		if v.Kind() == reflect.Slice && v.IsNil() {
+			data = []struct{}{}
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
