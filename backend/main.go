@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"wine-cellar/config"
 	"wine-cellar/handlers"
@@ -112,32 +113,71 @@ func main() {
 }
 
 // staticFileHandler serves Next.js static export files.
-// Tries: exact path → path.html → path/index.html → 404.
+// Tries: exact path → path.html → path/index.html → placeholder fallback → 404.
 func staticFileHandler(dir string) http.Handler {
 	fs := http.FileServer(http.Dir(dir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := filepath.Join(dir, filepath.Clean("/"+r.URL.Path))
+		urlPath := filepath.Clean("/" + r.URL.Path)
+		diskPath := filepath.Join(dir, urlPath)
 
 		// Exact file exists
-		if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+		if fi, err := os.Stat(diskPath); err == nil && !fi.IsDir() {
 			fs.ServeHTTP(w, r)
 			return
 		}
 
 		// Try path.html (Next.js static export generates /page.html)
-		if _, err := os.Stat(path + ".html"); err == nil {
-			serveFileContent(w, r, path+".html")
+		if _, err := os.Stat(diskPath + ".html"); err == nil {
+			serveFileContent(w, r, diskPath+".html")
 			return
 		}
 
 		// Try path/index.html
-		if _, err := os.Stat(filepath.Join(path, "index.html")); err == nil {
-			serveFileContent(w, r, filepath.Join(path, "index.html"))
+		if _, err := os.Stat(filepath.Join(diskPath, "index.html")); err == nil {
+			serveFileContent(w, r, filepath.Join(diskPath, "index.html"))
+			return
+		}
+
+		// Placeholder fallback for Next.js dynamic routes.
+		// Next.js static export uses __placeholder__ for dynamic segments (e.g. [id]).
+		// Replace each path segment with __placeholder__ and retry, from deepest to shallowest.
+		if p := placeholderFallback(dir, urlPath); p != "" {
+			serveFileContent(w, r, p)
 			return
 		}
 
 		http.NotFound(w, r)
 	})
+}
+
+// placeholderFallback replaces path segments with __placeholder__ to find Next.js
+// dynamic route files. E.g. /cellar/some-uuid → /cellar/__placeholder__
+// Also handles nested files: /cellar/some-uuid/__next._index.txt → /cellar/__placeholder__/__next._index.txt
+func placeholderFallback(dir, urlPath string) string {
+	segments := strings.Split(strings.Trim(urlPath, "/"), "/")
+	// Try replacing each segment (right to left, skipping the last if it looks like a file)
+	for i := len(segments) - 1; i >= 0; i-- {
+		if segments[i] == "__placeholder__" {
+			continue
+		}
+		original := segments[i]
+		segments[i] = "__placeholder__"
+		candidate := "/" + strings.Join(segments, "/")
+		diskPath := filepath.Join(dir, candidate)
+
+		if fi, err := os.Stat(diskPath); err == nil && !fi.IsDir() {
+			return diskPath
+		}
+		if _, err := os.Stat(diskPath + ".html"); err == nil {
+			return diskPath + ".html"
+		}
+		if _, err := os.Stat(filepath.Join(diskPath, "index.html")); err == nil {
+			return filepath.Join(diskPath, "index.html")
+		}
+
+		segments[i] = original // restore and try shallower
+	}
+	return ""
 }
 
 // serveFileContent serves a file using http.ServeContent to avoid http.ServeFile's
