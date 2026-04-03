@@ -42,6 +42,13 @@ export function WineForm({
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  const setNum =
+    (field: keyof WineFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const v = e.target.value;
+      setForm((f) => ({ ...f, [field]: v === "" ? undefined : Number(v) }));
+    };
+
   return (
     <form
       onSubmit={(e) => {
@@ -83,7 +90,7 @@ export function WineForm({
           <Input
             type="number"
             value={form.vintage ?? ""}
-            onChange={set("vintage")}
+            onChange={setNum("vintage")}
             className="bg-wood-dark border-burgundy/30 text-cream"
             placeholder="2019"
             min="1800"

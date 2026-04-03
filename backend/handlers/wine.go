@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -71,6 +72,7 @@ func (h *WineHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	wine.Status = "validated"
 	if err := h.repo.Create(r.Context(), &wine, nil); err != nil {
+		log.Printf("ERROR create wine: %v", err)
 		jsonError(w, "failed to create wine", http.StatusInternalServerError)
 		return
 	}
@@ -101,6 +103,7 @@ func (h *WineHandler) CreateWithImage(w http.ResponseWriter, r *http.Request) {
 
 	wine.Status = "validated"
 	if err := h.repo.Create(r.Context(), &wine, imageData); err != nil {
+		log.Printf("ERROR create wine with image: %v", err)
 		jsonError(w, "failed to save wine", http.StatusInternalServerError)
 		return
 	}

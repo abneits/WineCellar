@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"wine-cellar/models"
@@ -37,6 +38,7 @@ func (h *CellarHandler) Add(w http.ResponseWriter, r *http.Request) {
 		PurchasePrice: req.PurchasePrice,
 	}
 	if err := h.repo.Add(r.Context(), entry); err != nil {
+		log.Printf("ERROR add to cellar (wine_id=%s): %v", req.WineID, err)
 		jsonError(w, "failed to add to cellar", http.StatusInternalServerError)
 		return
 	}
