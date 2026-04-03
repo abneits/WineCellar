@@ -1,0 +1,22 @@
+.git
+.gitignore
+*.md
+docs/
+
+# Frontend build artifacts
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# Backend build artifacts
+backend/server
+
+# Local env files
+.env
+.env.*
+*.env
+
+# IDE / OS files
+.DS_Store
+.vscode
+.idea
