@@ -83,7 +83,7 @@ func (r *wineRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.Wine, err
 		SELECT id, name, appellation, region, country, producer, vintage, color,
 			grape_varieties, alcohol_content, description, tasting_notes, food_pairings,
 			peak_maturity_start, peak_maturity_end, average_price,
-			ai_confidence, ai_raw_response, web_search_data,
+			ai_confidence, enrichment_confidence, ai_raw_response, web_search_data,
 			status, (image IS NOT NULL) as has_image,
 			created_at, updated_at
 		FROM wines WHERE id = $1`, id,
@@ -93,7 +93,7 @@ func (r *wineRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.Wine, err
 		&wine.GrapeVarieties, &wine.AlcoholContent, &wine.Description,
 		&wine.TastingNotes, &wine.FoodPairings,
 		&wine.PeakMaturityStart, &wine.PeakMaturityEnd, &wine.AveragePrice,
-		&wine.AIConfidence, &wine.AIRawResponse, &wine.WebSearchData,
+		&wine.AIConfidence, &wine.EnrichmentConfidence, &wine.AIRawResponse, &wine.WebSearchData,
 		&wine.Status, &wine.HasImage, &wine.CreatedAt, &wine.UpdatedAt,
 	)
 	if err != nil {
@@ -210,7 +210,8 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 		limit = 10
 	}
 	rows, err := r.db.Query(ctx, `
-		SELECT id, name, status, (image IS NOT NULL) as has_image, image, created_at
+		SELECT id, name, status, (image IS NOT NULL) as has_image, image,
+			ai_confidence, enrichment_confidence, created_at
 		FROM wines
 		WHERE status = $1
 		ORDER BY created_at ASC
@@ -225,7 +226,7 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 	for rows.Next() {
 		pw := &models.PendingWine{}
 		var imageData []byte
-		if err := rows.Scan(&pw.ID, &pw.Name, &pw.Status, &pw.HasImage, &imageData, &pw.CreatedAt); err != nil {
+		if err := rows.Scan(&pw.ID, &pw.Name, &pw.Status, &pw.HasImage, &imageData, &pw.AIConfidence, &pw.EnrichmentConfidence, &pw.CreatedAt); err != nil {
 			return nil, err
 		}
 		if len(imageData) > 0 {
@@ -263,10 +264,12 @@ func (r *wineRepo) UpdateEnrichment(ctx context.Context, id uuid.UUID, req *mode
 			peak_maturity_start=COALESCE($4, peak_maturity_start),
 			peak_maturity_end=COALESCE($5, peak_maturity_end),
 			average_price=COALESCE($6, average_price),
+			enrichment_confidence=COALESCE($7, enrichment_confidence),
 			status='enriched', updated_at=NOW()
-		WHERE id=$7`,
+		WHERE id=$8`,
 		req.TastingNotes, req.FoodPairings, req.WebSearchData,
 		req.PeakMaturityStart, req.PeakMaturityEnd, req.AveragePrice,
+		req.EnrichmentConfidence,
 		id,
 	)
 	return err

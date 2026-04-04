@@ -30,6 +30,7 @@ export interface Wine {
   peak_maturity_end?: number;
   average_price?: number;
   ai_confidence?: number;
+  enrichment_confidence?: number;
   status: WineStatus;
   has_image: boolean;
   created_at: string;
@@ -50,6 +51,8 @@ export interface PendingWine {
   status: WineStatus;
   has_image: boolean;
   image_base64?: string;
+  ai_confidence?: number;
+  enrichment_confidence?: number;
   created_at: string;
 }
 

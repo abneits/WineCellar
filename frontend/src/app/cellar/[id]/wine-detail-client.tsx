@@ -30,6 +30,7 @@ export default function WineDetailClient() {
   const { data: wine, isLoading } = useQuery({
     queryKey: ["wines", id],
     queryFn: () => winesApi.get(id),
+    enabled: !!id && id !== "__placeholder__",
   });
 
   const { data: cellarEntries = [] } = useQuery({

@@ -32,9 +32,21 @@ function PendingWineCard({
         <p className="text-cream text-xs font-medium truncate">
           {wine.name || "Unidentified bottle"}
         </p>
-        <p className="text-cream/40 text-[10px]">
-          {new Date(wine.created_at).toLocaleDateString()}
-        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-cream/40 text-[10px]">
+            {new Date(wine.created_at).toLocaleDateString()}
+          </p>
+          {wine.ai_confidence != null && (
+            <p className="text-[10px] text-gold/70">
+              ID {Math.round(wine.ai_confidence * 100)}%
+            </p>
+          )}
+          {wine.enrichment_confidence != null && (
+            <p className="text-[10px] text-gold/70">
+              Enrich {Math.round(wine.enrichment_confidence * 100)}%
+            </p>
+          )}
+        </div>
       </div>
       {action}
     </div>

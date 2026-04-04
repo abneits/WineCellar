@@ -24,9 +24,10 @@ type Wine struct {
 	PeakMaturityStart *int            `json:"peak_maturity_start,omitempty"`
 	PeakMaturityEnd   *int            `json:"peak_maturity_end,omitempty"`
 	AveragePrice      *float64        `json:"average_price,omitempty"`
-	AIConfidence      *float64        `json:"ai_confidence,omitempty"`
-	AIRawResponse     json.RawMessage `json:"ai_raw_response,omitempty"`
-	WebSearchData     json.RawMessage `json:"web_search_data,omitempty"`
+	AIConfidence          *float64        `json:"ai_confidence,omitempty"`
+	EnrichmentConfidence  *float64        `json:"enrichment_confidence,omitempty"`
+	AIRawResponse         json.RawMessage `json:"ai_raw_response,omitempty"`
+	WebSearchData         json.RawMessage `json:"web_search_data,omitempty"`
 	Status            string          `json:"status"`
 	HasImage          bool            `json:"has_image"`
 	CreatedAt         time.Time       `json:"created_at"`
@@ -43,12 +44,14 @@ type ScanQueuedResponse struct {
 
 // PendingWine is returned from GET /api/wines/pending for n8n batch jobs.
 type PendingWine struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	HasImage    bool      `json:"has_image"`
-	ImageBase64 string    `json:"image_base64,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                   uuid.UUID `json:"id"`
+	Name                 string    `json:"name"`
+	Status               string    `json:"status"`
+	HasImage             bool      `json:"has_image"`
+	ImageBase64          string    `json:"image_base64,omitempty"`
+	AIConfidence         *float64  `json:"ai_confidence,omitempty"`
+	EnrichmentConfidence *float64  `json:"enrichment_confidence,omitempty"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 // RecognitionUpdateRequest is posted by n8n with Ollama Vision results.
@@ -69,12 +72,13 @@ type RecognitionUpdateRequest struct {
 
 // EnrichmentUpdateRequest is posted by n8n with web search / tasting data.
 type EnrichmentUpdateRequest struct {
-	TastingNotes      json.RawMessage `json:"tasting_notes,omitempty"`
-	FoodPairings      json.RawMessage `json:"food_pairings,omitempty"`
-	WebSearchData     json.RawMessage `json:"web_search_data,omitempty"`
-	PeakMaturityStart *int            `json:"peak_maturity_start,omitempty"`
-	PeakMaturityEnd   *int            `json:"peak_maturity_end,omitempty"`
-	AveragePrice      *float64        `json:"average_price,omitempty"`
+	TastingNotes         json.RawMessage `json:"tasting_notes,omitempty"`
+	FoodPairings         json.RawMessage `json:"food_pairings,omitempty"`
+	WebSearchData        json.RawMessage `json:"web_search_data,omitempty"`
+	PeakMaturityStart    *int            `json:"peak_maturity_start,omitempty"`
+	PeakMaturityEnd      *int            `json:"peak_maturity_end,omitempty"`
+	AveragePrice         *float64        `json:"average_price,omitempty"`
+	EnrichmentConfidence *float64        `json:"enrichment_confidence,omitempty"`
 }
 
 // StatusUpdateRequest is used by n8n to set a wine's status (e.g. "failed").
