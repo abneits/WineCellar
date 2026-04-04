@@ -104,8 +104,13 @@ export default function WineDetailClient() {
 
   if (!wine) return <div className="p-4 text-cream/50">Wine not found</div>;
 
-  // Enriched wines: show validation form
-  if (wine.status === "enriched" || wine.status === "recognized") {
+  // Pending/enriched wines: show editable form to fill or validate
+  if (
+    wine.status === "enriched" ||
+    wine.status === "recognized" ||
+    wine.status === "pending_recognition" ||
+    wine.status === "failed"
+  ) {
     return (
       <div className="pb-8">
         <div className="relative h-48 bg-wood-dark">
@@ -130,7 +135,13 @@ export default function WineDetailClient() {
           </button>
           <div className="absolute bottom-4 left-4">
             <span className="text-xs bg-gold/20 text-gold border border-gold/30 rounded-full px-2 py-0.5">
-              {wine.status === "enriched" ? "Ready to validate" : "Awaiting enrichment"}
+              {wine.status === "enriched"
+              ? "Ready to validate"
+              : wine.status === "recognized"
+              ? "Awaiting enrichment"
+              : wine.status === "failed"
+              ? "Recognition failed"
+              : "Awaiting recognition"}
             </span>
           </div>
         </div>
