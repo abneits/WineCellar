@@ -46,6 +46,7 @@ export interface ScanQueuedResponse {
 /** Returned by GET /api/wines/pending — for n8n polling and dashboard display */
 export interface PendingWine {
   id: string;
+  name: string;
   status: WineStatus;
   has_image: boolean;
   image_base64?: string;

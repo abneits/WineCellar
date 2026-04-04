@@ -210,7 +210,7 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 		limit = 10
 	}
 	rows, err := r.db.Query(ctx, `
-		SELECT id, status, (image IS NOT NULL) as has_image, image, created_at
+		SELECT id, name, status, (image IS NOT NULL) as has_image, image, created_at
 		FROM wines
 		WHERE status = $1
 		ORDER BY created_at ASC
@@ -225,7 +225,7 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 	for rows.Next() {
 		pw := &models.PendingWine{}
 		var imageData []byte
-		if err := rows.Scan(&pw.ID, &pw.Status, &pw.HasImage, &imageData, &pw.CreatedAt); err != nil {
+		if err := rows.Scan(&pw.ID, &pw.Name, &pw.Status, &pw.HasImage, &imageData, &pw.CreatedAt); err != nil {
 			return nil, err
 		}
 		if len(imageData) > 0 {

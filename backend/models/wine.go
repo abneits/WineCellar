@@ -44,6 +44,7 @@ type ScanQueuedResponse struct {
 // PendingWine is returned from GET /api/wines/pending for n8n batch jobs.
 type PendingWine struct {
 	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
 	Status      string    `json:"status"`
 	HasImage    bool      `json:"has_image"`
 	ImageBase64 string    `json:"image_base64,omitempty"`
