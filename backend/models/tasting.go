@@ -17,8 +17,9 @@ type TastingNote struct {
 }
 
 type CreateTastingRequest struct {
-	WineID   uuid.UUID `json:"wine_id"`
-	Rating   int       `json:"rating"`
-	Comment  string    `json:"comment"`
-	TastedAt *string   `json:"tasted_at,omitempty"` // ISO date string, defaults to today
+	WineID        uuid.UUID  `json:"wine_id"`
+	ConsumptionID *uuid.UUID `json:"consumption_id,omitempty"`
+	Rating        int        `json:"rating"`
+	Comment       string     `json:"comment"`
+	TastedAt      *string    `json:"tasted_at,omitempty"` // ISO date string, defaults to today
 }

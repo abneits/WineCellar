@@ -75,12 +75,19 @@ export function WineCard({ entry }: WineCardProps) {
           {wine.vintage && (
             <p className="text-xs text-cream/50 mt-0.5">{wine.vintage}</p>
           )}
-          <Badge
-            className={`mt-2 text-[10px] capitalize border ${COLOR_BADGE[wine.color] ?? COLOR_BADGE.red}`}
-            variant="outline"
-          >
-            {wine.color}
-          </Badge>
+          <div className="mt-2 flex items-center justify-between">
+            <Badge
+              className={`text-[10px] capitalize border ${COLOR_BADGE[wine.color] ?? COLOR_BADGE.red}`}
+              variant="outline"
+            >
+              {wine.color}
+            </Badge>
+            {entry.avg_rating != null && (
+              <span className="text-[10px] text-gold">
+                {"★".repeat(Math.round(entry.avg_rating))}{"☆".repeat(5 - Math.round(entry.avg_rating))}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </Link>

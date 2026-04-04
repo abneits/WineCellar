@@ -101,9 +101,12 @@ func (r *cellarRepo) List(ctx context.Context) ([]*models.CellarEntry, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT ce.id, ce.wine_id, ce.quantity, ce.location, ce.purchase_date, ce.purchase_price, ce.added_at,
 			w.id, w.name, w.producer, w.vintage, w.color, w.appellation, w.region,
-			(w.image IS NOT NULL) as has_image, w.average_price
+			(w.image IS NOT NULL) as has_image, w.average_price, w.status,
+			ROUND(AVG(tn.rating)::numeric, 1) as avg_rating
 		FROM cellar_entries ce
 		JOIN wines w ON w.id = ce.wine_id
+		LEFT JOIN tasting_notes tn ON tn.wine_id = w.id
+		GROUP BY ce.id, w.id
 		ORDER BY ce.added_at DESC`)
 	if err != nil {
 		return nil, err
@@ -116,7 +119,8 @@ func (r *cellarRepo) List(ctx context.Context) ([]*models.CellarEntry, error) {
 		if err := rows.Scan(
 			&e.ID, &e.WineID, &e.Quantity, &e.Location, &e.PurchaseDate, &e.PurchasePrice, &e.AddedAt,
 			&e.Wine.ID, &e.Wine.Name, &e.Wine.Producer, &e.Wine.Vintage, &e.Wine.Color,
-			&e.Wine.Appellation, &e.Wine.Region, &e.Wine.HasImage, &e.Wine.AveragePrice,
+			&e.Wine.Appellation, &e.Wine.Region, &e.Wine.HasImage, &e.Wine.AveragePrice, &e.Wine.Status,
+			&e.AvgRating,
 		); err != nil {
 			return nil, err
 		}

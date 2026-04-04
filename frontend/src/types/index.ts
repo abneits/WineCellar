@@ -65,6 +65,7 @@ export interface CellarEntry {
   purchase_date?: string;
   purchase_price?: number;
   added_at: string;
+  avg_rating?: number;
 }
 
 export interface CellarStats {
@@ -131,6 +132,7 @@ export interface ConsumeRequest {
 
 export interface CreateTastingRequest {
   wine_id: string;
+  consumption_id?: string;
   rating: number;
   comment: string;
   tasted_at?: string;

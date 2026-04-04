@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -46,6 +47,11 @@ func (h *TastingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := h.repo.Create(r.Context(), note); err != nil {
 		jsonError(w, "failed to save tasting note", http.StatusInternalServerError)
 		return
+	}
+	if req.ConsumptionID != nil {
+		if err := h.repo.MarkRated(r.Context(), *req.ConsumptionID); err != nil {
+			log.Printf("ERROR mark rated (consumption_id=%s): %v", req.ConsumptionID, err)
+		}
 	}
 	jsonResponseStatus(w, note, http.StatusCreated)
 }

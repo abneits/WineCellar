@@ -30,6 +30,7 @@ export function PendingRatingsModal() {
     mutationFn: async (item: PendingRating) => {
       await tastingsApi.create({
         wine_id: item.wine_id,
+        consumption_id: item.consumption_id,
         rating,
         comment,
       });

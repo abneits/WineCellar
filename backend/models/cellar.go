@@ -15,6 +15,7 @@ type CellarEntry struct {
 	PurchaseDate  *time.Time `json:"purchase_date,omitempty"`
 	PurchasePrice *float64   `json:"purchase_price,omitempty"`
 	AddedAt       time.Time  `json:"added_at"`
+	AvgRating     *float64   `json:"avg_rating,omitempty"`
 }
 
 type CellarStats struct {
