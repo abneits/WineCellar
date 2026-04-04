@@ -55,23 +55,33 @@ export function PendingBottlesSection() {
     queryFn: () => winesApi.listPending("enriched", 20),
   });
 
-  const needsValidation = recognizedWines.length + enrichedWines.length;
-
-  if (pendingWines.length === 0 && needsValidation === 0) return null;
+  if (pendingWines.length === 0 && recognizedWines.length === 0 && enrichedWines.length === 0) return null;
 
   return (
     <section className="space-y-3">
-      {needsValidation > 0 && (
+      {recognizedWines.length > 0 && (
+        <div className="bg-wood border border-burgundy/20 rounded-xl p-4 flex items-center gap-3">
+          <Clock size={20} className="text-cream/40 shrink-0" />
+          <div className="flex-1">
+            <p className="text-cream text-sm font-medium">
+              {recognizedWines.length} bottle{recognizedWines.length > 1 ? "s" : ""} waiting for enrichment
+            </p>
+            <p className="text-cream/50 text-xs">AI is gathering tasting notes and pairings</p>
+          </div>
+        </div>
+      )}
+
+      {enrichedWines.length > 0 && (
         <div className="bg-gold/10 border border-gold/30 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle size={20} className="text-gold shrink-0" />
           <div className="flex-1">
             <p className="text-cream text-sm font-medium">
-              {needsValidation} bottle{needsValidation > 1 ? "s" : ""} ready to validate
+              {enrichedWines.length} bottle{enrichedWines.length > 1 ? "s" : ""} ready to validate
             </p>
             <p className="text-cream/50 text-xs">AI has finished identifying your wines</p>
           </div>
           <Link
-            href="/cellar"
+            href={`/cellar/${enrichedWines[0].id}`}
             className="text-gold text-xs font-medium underline shrink-0"
           >
             Review
