@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, Trash2 } from "lucide-react";
@@ -18,8 +18,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { winesApi, cellarApi } from "@/lib/api";
 
 export default function WineDetailClient() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
+
+  // Next.js static export serves __placeholder__.html for all dynamic routes.
+  // useParams() hydrates from that HTML and returns "__placeholder__" instead of
+  // the real UUID. Fall back to reading the actual browser URL.
+  const [id, setId] = useState<string>(
+    params.id !== "__placeholder__" ? params.id : ""
+  );
+  useEffect(() => {
+    if (!id) {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      setId(parts[parts.length - 1] || "");
+    }
+  }, [id]);
   const queryClient = useQueryClient();
 
   const [consumeOpen, setConsumeOpen] = useState(false);
