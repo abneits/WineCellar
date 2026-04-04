@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { winesApi, cellarApi } from "@/lib/api";
+import { winesApi, cellarApi, tastingsApi } from "@/lib/api";
 import { WineValidationForm } from "./wine-validation-form";
 import type { Wine } from "@/types";
 
@@ -51,6 +51,12 @@ export default function WineDetailClient() {
   const { data: cellarEntries = [] } = useQuery({
     queryKey: ["cellar"],
     queryFn: cellarApi.list,
+  });
+
+  const { data: myNotes = [] } = useQuery({
+    queryKey: ["tastings", "wine", id],
+    queryFn: () => tastingsApi.listByWine(id),
+    enabled: !!id && id !== "__placeholder__",
   });
 
   const cellarEntry = cellarEntries.find((e) => e.wine_id === id);
@@ -182,117 +188,130 @@ export default function WineDetailClient() {
     );
   }
 
-  // Validated wines: show detail view
-  const foodPairings: string[] = Array.isArray(wine.food_pairings)
-    ? wine.food_pairings
-    : [];
+  // Validated wines: show full detail view
+  const foodPairings: string[] = Array.isArray(wine.food_pairings) ? wine.food_pairings : [];
+  const grapeVarieties: string[] = Array.isArray(wine.grape_varieties) ? wine.grape_varieties : [];
   const currentYear = new Date().getFullYear();
-  const isReady =
-    wine.peak_maturity_start != null && currentYear >= wine.peak_maturity_start;
+  const isReady = wine.peak_maturity_start != null && currentYear >= wine.peak_maturity_start;
 
   return (
     <div className="pb-8">
+      {/* Header image */}
       <div className="relative h-64 bg-wood-dark">
         {wine.has_image ? (
-          <img
-            src={winesApi.getImageUrl(id)}
-            alt={wine.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={winesApi.getImageUrl(id)} alt={wine.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-8xl opacity-10">🍷</span>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-wood-dark/90 to-transparent" />
-        <button
-          onClick={() => router.back()}
-          className="absolute top-4 left-4 bg-wood/70 rounded-full p-2"
-          aria-label="Go back"
-        >
+        <button onClick={() => router.back()} className="absolute top-4 left-4 bg-wood/70 rounded-full p-2" aria-label="Go back">
           <ArrowLeft size={20} className="text-cream" />
         </button>
       </div>
 
       <div className="px-4 -mt-8 space-y-4">
         {actionError && (
-          <div className="bg-red-900/30 border border-red-700/30 rounded-lg p-3 text-red-300 text-sm">
-            {actionError}
-          </div>
+          <div className="bg-red-900/30 border border-red-700/30 rounded-lg p-3 text-red-300 text-sm">{actionError}</div>
         )}
+
+        {/* Identity */}
         <div>
           <h1 className="font-serif text-2xl font-bold text-cream">{wine.name}</h1>
-          <p className="text-cream/60 text-sm">
-            {wine.producer} {wine.vintage ? `· ${wine.vintage}` : ""}
-          </p>
-          <p className="text-cream/40 text-xs mt-1 capitalize">
-            {wine.color} · {wine.appellation} · {wine.region}, {wine.country}
-          </p>
+          <p className="text-cream/60 text-sm">{wine.producer}{wine.vintage ? ` · ${wine.vintage}` : ""}</p>
+          <p className="text-cream/40 text-xs mt-1 capitalize">{wine.color}{wine.appellation ? ` · ${wine.appellation}` : ""}{wine.region ? ` · ${wine.region}` : ""}{wine.country ? `, ${wine.country}` : ""}</p>
         </div>
 
-        {wine.peak_maturity_start != null && (
-          <div
-            className={`rounded-lg p-3 border text-sm ${
-              isReady
-                ? "bg-green-900/20 border-green-700/30 text-green-300"
-                : "bg-amber-900/20 border-amber-700/30 text-amber-300"
-            }`}
-          >
-            {isReady
-              ? `✓ In drinking window (${wine.peak_maturity_start}–${wine.peak_maturity_end ?? "?"})`
-              : `⏳ Ready from ${wine.peak_maturity_start}`}
+        {/* Key facts row */}
+        {(grapeVarieties.length > 0 || wine.alcohol_content || wine.average_price) && (
+          <div className="flex flex-wrap gap-2">
+            {grapeVarieties.map((g, i) => (
+              <span key={i} className="bg-wood-dark rounded-full px-3 py-1 text-xs text-cream/70 border border-burgundy/20">{g}</span>
+            ))}
+            {wine.alcohol_content && (
+              <span className="bg-wood-dark rounded-full px-3 py-1 text-xs text-cream/70 border border-burgundy/20">{wine.alcohol_content}% alc.</span>
+            )}
+            {wine.average_price && (
+              <span className="bg-wood-dark rounded-full px-3 py-1 text-xs text-cream/70 border border-burgundy/20">~{wine.average_price}€</span>
+            )}
           </div>
         )}
 
+        {/* Maturity */}
+        {wine.peak_maturity_start != null && (
+          <div className={`rounded-lg p-3 border text-sm ${isReady ? "bg-green-900/20 border-green-700/30 text-green-300" : "bg-amber-900/20 border-amber-700/30 text-amber-300"}`}>
+            {isReady ? `✓ In drinking window (${wine.peak_maturity_start}–${wine.peak_maturity_end ?? "?"})` : `⏳ Ready from ${wine.peak_maturity_start}`}
+          </div>
+        )}
+
+        {/* Description */}
         {wine.description && (
           <p className="text-cream/70 text-sm leading-relaxed">{wine.description}</p>
         )}
 
+        {/* AI Tasting notes */}
+        {(wine.tasting_notes?.nose || wine.tasting_notes?.palate || wine.tasting_notes?.finish) && (
+          <div className="bg-wood rounded-xl p-4 border border-burgundy/20 space-y-2">
+            <h2 className="font-serif text-sm font-semibold text-gold">Tasting Notes</h2>
+            {wine.tasting_notes.nose && (
+              <div><p className="text-[10px] text-cream/40 uppercase tracking-wider">Nose</p><p className="text-cream/70 text-xs leading-relaxed">{wine.tasting_notes.nose}</p></div>
+            )}
+            {wine.tasting_notes.palate && (
+              <div><p className="text-[10px] text-cream/40 uppercase tracking-wider mt-2">Palate</p><p className="text-cream/70 text-xs leading-relaxed">{wine.tasting_notes.palate}</p></div>
+            )}
+            {wine.tasting_notes.finish && (
+              <div><p className="text-[10px] text-cream/40 uppercase tracking-wider mt-2">Finish</p><p className="text-cream/70 text-xs leading-relaxed">{wine.tasting_notes.finish}</p></div>
+            )}
+          </div>
+        )}
+
+        {/* Food pairings */}
         {foodPairings.length > 0 && (
           <div>
-            <h2 className="font-serif text-sm font-semibold text-gold mb-2">
-              Food Pairings
-            </h2>
+            <h2 className="font-serif text-sm font-semibold text-gold mb-2">Food Pairings</h2>
             <div className="flex flex-wrap gap-2">
               {foodPairings.map((p, i) => (
-                <span
-                  key={i}
-                  className="bg-wood-dark rounded-full px-3 py-1 text-xs text-cream/70 border border-burgundy/20"
-                >
-                  {p}
-                </span>
+                <span key={i} className="bg-wood-dark rounded-full px-3 py-1 text-xs text-cream/70 border border-burgundy/20">{p}</span>
               ))}
             </div>
           </div>
         )}
 
+        {/* Cellar */}
         {cellarEntry && (
           <div className="bg-wood rounded-xl p-4 border border-burgundy/20 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-cream/60 text-sm">In cellar</span>
-              <span className="text-gold font-bold text-lg">
-                {cellarEntry.quantity} bottles
-              </span>
+              <span className="text-gold font-bold text-lg">{cellarEntry.quantity} bottles</span>
             </div>
-            {cellarEntry.location && (
-              <p className="text-xs text-cream/40">
-                Location: {cellarEntry.location}
-              </p>
-            )}
-            <Button
-              className="w-full bg-burgundy hover:bg-burgundy-600 text-cream"
-              onClick={() => setConsumeOpen(true)}
-              disabled={cellarEntry.quantity === 0}
-            >
+            {cellarEntry.location && <p className="text-xs text-cream/40">Location: {cellarEntry.location}</p>}
+            <Button className="w-full bg-burgundy hover:bg-burgundy-600 text-cream" onClick={() => setConsumeOpen(true)} disabled={cellarEntry.quantity === 0}>
               Open a Bottle
             </Button>
           </div>
         )}
 
+        {/* My tasting notes */}
+        {myNotes.length > 0 && (
+          <div>
+            <h2 className="font-serif text-sm font-semibold text-gold mb-2">My Notes</h2>
+            <div className="space-y-2">
+              {myNotes.map((note) => (
+                <div key={note.id} className="bg-wood rounded-xl p-3 border border-burgundy/20">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-gold text-sm">{"★".repeat(note.rating)}{"☆".repeat(5 - note.rating)}</span>
+                    <span className="text-cream/30 text-[10px]">{new Date(note.tasted_at).toLocaleDateString()}</span>
+                  </div>
+                  {note.comment && <p className="text-cream/70 text-xs leading-relaxed">{note.comment}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
-          onClick={() => {
-            if (confirm("Delete this wine from your cellar?")) deleteWine();
-          }}
+          onClick={() => { if (confirm("Delete this wine from your cellar?")) deleteWine(); }}
           className="flex items-center gap-2 text-red-400/50 hover:text-red-400 text-sm w-full justify-center py-2"
           disabled={deleting}
         >

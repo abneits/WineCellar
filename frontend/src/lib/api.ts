@@ -121,6 +121,7 @@ export const cellarApi = {
 
 export const tastingsApi = {
   list: () => request<TastingNote[]>("/api/tastings"),
+  listByWine: (wineId: string) => request<TastingNote[]>(`/api/tastings?wine_id=${wineId}`),
   create: (req: CreateTastingRequest) =>
     request<TastingNote>("/api/tastings", { method: "POST", body: JSON.stringify(req) }),
   update: (id: string, note: Partial<TastingNote>) =>

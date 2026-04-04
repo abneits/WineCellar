@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cellarApi } from "@/lib/api";
 import type { WineColor } from "@/types";
 
-const COLORS: WineColor[] = ["red", "white", "rosé", "sparkling", "dessert", "orange"];
+const COLORS: WineColor[] = ["red", "white", "rosé", "sparkling", "dessert", "orange", "yellow"];
 
 export default function CellarPage() {
   const [search, setSearch] = useState("");

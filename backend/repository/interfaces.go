@@ -37,6 +37,7 @@ type CellarRepo interface {
 type TastingRepo interface {
 	Create(ctx context.Context, note *models.TastingNote) error
 	List(ctx context.Context) ([]*models.TastingNote, error)
+	ListByWine(ctx context.Context, wineID uuid.UUID) ([]*models.TastingNote, error)
 	GetPending(ctx context.Context) ([]*models.PendingRating, error)
 	Update(ctx context.Context, note *models.TastingNote) error
 	MarkRated(ctx context.Context, consumptionID uuid.UUID) error

@@ -56,6 +56,28 @@ func (r *tastingRepo) List(ctx context.Context) ([]*models.TastingNote, error) {
 	return notes, rows.Err()
 }
 
+func (r *tastingRepo) ListByWine(ctx context.Context, wineID uuid.UUID) ([]*models.TastingNote, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, wine_id, rating, comment, tasted_at, created_at
+		FROM tasting_notes
+		WHERE wine_id = $1
+		ORDER BY tasted_at DESC`, wineID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var notes []*models.TastingNote
+	for rows.Next() {
+		n := &models.TastingNote{}
+		if err := rows.Scan(&n.ID, &n.WineID, &n.Rating, &n.Comment, &n.TastedAt, &n.CreatedAt); err != nil {
+			return nil, err
+		}
+		notes = append(notes, n)
+	}
+	return notes, rows.Err()
+}
+
 func (r *tastingRepo) GetPending(ctx context.Context) ([]*models.PendingRating, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT cl.id, cl.wine_id, w.name, w.vintage, cl.consumed_at, cl.occasion,

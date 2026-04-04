@@ -4,12 +4,13 @@ import type { CellarEntry, WineStatus } from "@/types";
 import { Badge } from "@/components/ui/badge";
 
 const COLOR_BADGE: Record<string, string> = {
-  red: "bg-red-900/50 text-red-200 border-red-700/30",
-  white: "bg-yellow-900/50 text-yellow-200 border-yellow-700/30",
-  "rosé": "bg-pink-900/50 text-pink-200 border-pink-700/30",
-  sparkling: "bg-blue-900/50 text-blue-200 border-blue-700/30",
-  dessert: "bg-amber-900/50 text-amber-200 border-amber-700/30",
-  orange: "bg-orange-900/50 text-orange-200 border-orange-700/30",
+  red:      "bg-red-900/60 text-red-300 border-red-600/40",
+  white:    "bg-stone-600/40 text-stone-200 border-stone-400/30",
+  "rosé":   "bg-pink-800/50 text-pink-300 border-pink-500/40",
+  sparkling:"bg-sky-900/50 text-sky-200 border-sky-600/30",
+  dessert:  "bg-amber-800/50 text-amber-200 border-amber-500/40",
+  orange:   "bg-orange-800/50 text-orange-300 border-orange-500/40",
+  yellow:   "bg-yellow-700/50 text-yellow-200 border-yellow-500/40",
 };
 
 const STATUS_BADGE: Partial<Record<WineStatus, { label: string; className: string }>> = {
@@ -41,7 +42,7 @@ export function WineCard({ entry }: WineCardProps) {
 
   return (
     <Link href={`/cellar/${wine.id}`}>
-      <div className="bg-wood rounded-xl border border-burgundy/20 hover:border-burgundy/60 transition-all active:scale-[0.98] overflow-hidden">
+      <div className={`bg-wood rounded-xl border border-burgundy/20 hover:border-burgundy/60 transition-all active:scale-[0.98] overflow-hidden${entry.quantity === 0 ? " opacity-50" : ""}`}>
         <div className="aspect-[3/4] bg-wood-dark relative">
           {wine.has_image ? (
             <img

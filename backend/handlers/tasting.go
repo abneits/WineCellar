@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
+
 type TastingHandler struct {
 	repo repository.TastingRepo
 }
@@ -57,6 +58,23 @@ func (h *TastingHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TastingHandler) List(w http.ResponseWriter, r *http.Request) {
+	if wineIDStr := r.URL.Query().Get("wine_id"); wineIDStr != "" {
+		wineID, err := uuid.Parse(wineIDStr)
+		if err != nil {
+			jsonError(w, "invalid wine_id", http.StatusBadRequest)
+			return
+		}
+		notes, err := h.repo.ListByWine(r.Context(), wineID)
+		if err != nil {
+			jsonError(w, "failed to list tasting notes", http.StatusInternalServerError)
+			return
+		}
+		if notes == nil {
+			notes = []*models.TastingNote{}
+		}
+		jsonResponse(w, notes)
+		return
+	}
 	notes, err := h.repo.List(r.Context())
 	if err != nil {
 		jsonError(w, "failed to list tasting notes", http.StatusInternalServerError)
