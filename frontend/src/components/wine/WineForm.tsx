@@ -25,7 +25,7 @@ interface WineFormProps {
   aiConfidence?: number;
 }
 
-const COLORS: WineColor[] = ["red", "white", "rosé", "sparkling", "dessert", "orange"];
+const COLORS: WineColor[] = ["red", "white", "rosé", "sparkling", "dessert", "orange", "yellow"];
 
 export function WineForm({
   initialData,

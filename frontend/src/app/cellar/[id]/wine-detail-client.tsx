@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { winesApi, cellarApi } from "@/lib/api";
+import { WineValidationForm } from "./wine-validation-form";
+import type { Wine } from "@/types";
 
 export default function WineDetailClient() {
   const params = useParams<{ id: string }>();
@@ -33,8 +35,8 @@ export default function WineDetailClient() {
       setId(parts[parts.length - 1] || "");
     }
   }, [id]);
-  const queryClient = useQueryClient();
 
+  const queryClient = useQueryClient();
   const [consumeOpen, setConsumeOpen] = useState(false);
   const [consumeQty, setConsumeQty] = useState(1);
   const [occasion, setOccasion] = useState("");
@@ -52,6 +54,21 @@ export default function WineDetailClient() {
   });
 
   const cellarEntry = cellarEntries.find((e) => e.wine_id === id);
+
+  // Validation: update wine fields + set status to validated + add to cellar
+  const { mutate: validateWine, isPending: validating } = useMutation({
+    mutationFn: async ({ data, quantity }: { data: Partial<Wine>; quantity: number }) => {
+      await winesApi.update(id, data);
+      await winesApi.updateStatus(id, "validated");
+      await cellarApi.add({ wine_id: id, quantity, location: "" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wines", id] });
+      queryClient.invalidateQueries({ queryKey: ["cellar"] });
+      queryClient.invalidateQueries({ queryKey: ["wines", "pending"] });
+    },
+    onError: (err: Error) => setActionError(err.message),
+  });
 
   const { mutate: consumeBottle, isPending: consuming } = useMutation({
     mutationFn: () =>
@@ -75,7 +92,7 @@ export default function WineDetailClient() {
     onError: (err: Error) => setActionError(err.message),
   });
 
-  if (isLoading) {
+  if (isLoading || !id) {
     return (
       <div className="px-4 pt-4 space-y-4">
         <Skeleton className="h-64 rounded-xl bg-wood" />
@@ -87,6 +104,74 @@ export default function WineDetailClient() {
 
   if (!wine) return <div className="p-4 text-cream/50">Wine not found</div>;
 
+  // Enriched wines: show validation form
+  if (wine.status === "enriched" || wine.status === "recognized") {
+    return (
+      <div className="pb-8">
+        <div className="relative h-48 bg-wood-dark">
+          {wine.has_image ? (
+            <img
+              src={winesApi.getImageUrl(id)}
+              alt={wine.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-6xl opacity-10">🍷</span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-wood-dark/90 to-transparent" />
+          <button
+            onClick={() => router.back()}
+            className="absolute top-4 left-4 bg-wood/70 rounded-full p-2"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={20} className="text-cream" />
+          </button>
+          <div className="absolute bottom-4 left-4">
+            <span className="text-xs bg-gold/20 text-gold border border-gold/30 rounded-full px-2 py-0.5">
+              {wine.status === "enriched" ? "Ready to validate" : "Awaiting enrichment"}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-4 pt-4 space-y-4">
+          {actionError && (
+            <div className="bg-red-900/30 border border-red-700/30 rounded-lg p-3 text-red-300 text-sm">
+              {actionError}
+            </div>
+          )}
+          <div>
+            <h1 className="font-serif text-xl font-bold text-cream">{wine.name || "Unidentified bottle"}</h1>
+            <p className="text-cream/40 text-xs mt-0.5">Review and correct the AI data before adding to your cellar</p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <WineValidationForm
+            wine={wine}
+            onValidate={(data, quantity) => validateWine({ data, quantity })}
+            isLoading={validating}
+          />
+        </div>
+
+        <div className="px-4">
+          <button
+            onClick={() => {
+              if (confirm("Delete this wine?")) deleteWine();
+            }}
+            className="flex items-center gap-2 text-red-400/50 hover:text-red-400 text-sm w-full justify-center py-2"
+            disabled={deleting}
+          >
+            <Trash2 size={14} />
+            {deleting ? "Deleting…" : "Delete wine"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Validated wines: show detail view
   const foodPairings: string[] = Array.isArray(wine.food_pairings)
     ? wine.food_pairings
     : [];
@@ -96,7 +181,6 @@ export default function WineDetailClient() {
 
   return (
     <div className="pb-8">
-      {/* Header image */}
       <div className="relative h-64 bg-wood-dark">
         {wine.has_image ? (
           <img
@@ -119,7 +203,6 @@ export default function WineDetailClient() {
         </button>
       </div>
 
-      {/* Content */}
       <div className="px-4 -mt-8 space-y-4">
         {actionError && (
           <div className="bg-red-900/30 border border-red-700/30 rounded-lg p-3 text-red-300 text-sm">
@@ -136,7 +219,6 @@ export default function WineDetailClient() {
           </p>
         </div>
 
-        {/* Maturity indicator */}
         {wine.peak_maturity_start != null && (
           <div
             className={`rounded-lg p-3 border text-sm ${
@@ -151,12 +233,10 @@ export default function WineDetailClient() {
           </div>
         )}
 
-        {/* Description */}
         {wine.description && (
           <p className="text-cream/70 text-sm leading-relaxed">{wine.description}</p>
         )}
 
-        {/* Food pairings */}
         {foodPairings.length > 0 && (
           <div>
             <h2 className="font-serif text-sm font-semibold text-gold mb-2">
@@ -175,7 +255,6 @@ export default function WineDetailClient() {
           </div>
         )}
 
-        {/* Cellar status + actions */}
         {cellarEntry && (
           <div className="bg-wood rounded-xl p-4 border border-burgundy/20 space-y-3">
             <div className="flex items-center justify-between">
@@ -199,7 +278,6 @@ export default function WineDetailClient() {
           </div>
         )}
 
-        {/* Delete */}
         <button
           onClick={() => {
             if (confirm("Delete this wine from your cellar?")) deleteWine();
@@ -212,7 +290,6 @@ export default function WineDetailClient() {
         </button>
       </div>
 
-      {/* Consume dialog */}
       <Dialog open={consumeOpen} onOpenChange={(open) => setConsumeOpen(open)}>
         <DialogContent className="bg-wood border-burgundy/30 text-cream max-w-sm mx-auto">
           <DialogHeader>

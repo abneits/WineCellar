@@ -1,4 +1,4 @@
-export type WineColor = "red" | "white" | "rosé" | "sparkling" | "dessert" | "orange";
+export type WineColor = "red" | "white" | "rosé" | "sparkling" | "dessert" | "orange" | "yellow";
 
 export type WineStatus =
   | "pending_recognition"

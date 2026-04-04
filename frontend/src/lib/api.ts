@@ -85,6 +85,8 @@ export const winesApi = {
   update: (id: string, wine: Partial<Wine>) =>
     request<Wine>(`/api/wines/${id}`, { method: "PUT", body: JSON.stringify(wine) }),
   delete: (id: string) => request<void>(`/api/wines/${id}`, { method: "DELETE" }),
+  updateStatus: (id: string, status: string) =>
+    request<void>(`/api/wines/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
   getImageUrl: (id: string, thumbnail = false) =>
     `${API_BASE}/api/wines/${id}/image${thumbnail ? "?size=thumbnail" : ""}`,
   /** Uploads bottle photo; returns queue confirmation (no AI call made yet). */
