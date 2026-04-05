@@ -4,6 +4,7 @@ export type WineStatus =
   | "pending_recognition"
   | "pending_enrichment"
   | "recognized"
+  | "needs_review"
   | "enriched"
   | "failed"
   | "validated";

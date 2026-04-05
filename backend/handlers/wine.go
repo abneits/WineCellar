@@ -224,6 +224,8 @@ func (h *WineHandler) Pending(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateRecognition is called by n8n after Ollama Vision identifies the bottle.
+// If confidence < 80% or any key identity field is missing, status is set to
+// "needs_review" so the user can complete the data before enrichment proceeds.
 func (h *WineHandler) UpdateRecognition(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -235,11 +237,22 @@ func (h *WineHandler) UpdateRecognition(w http.ResponseWriter, r *http.Request) 
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := h.repo.UpdateRecognition(r.Context(), id, &req); err != nil {
+
+	// Determine target status
+	status := "recognized"
+	lowConfidence := req.AIConfidence == nil || *req.AIConfidence < 0.80
+	missingFields := req.Name == "" || req.Country == "" || req.Color == "" ||
+		req.Appellation == "" || req.Region == "" || req.Producer == "" || req.Vintage == nil
+	if lowConfidence || missingFields {
+		status = "needs_review"
+		log.Printf("INFO recognition needs_review (wine=%s, confidence=%v, missing_fields=%v)", id, req.AIConfidence, missingFields)
+	}
+
+	if err := h.repo.UpdateRecognition(r.Context(), id, &req, status); err != nil {
 		jsonError(w, fmt.Sprintf("failed to update recognition: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, map[string]string{"status": "recognized"})
+	jsonResponse(w, map[string]string{"status": status})
 }
 
 // UpdateEnrichment is called by n8n after web search + tasting data is added.

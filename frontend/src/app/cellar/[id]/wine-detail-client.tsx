@@ -76,6 +76,19 @@ export default function WineDetailClient() {
     onError: (err: Error) => setActionError(err.message),
   });
 
+  // Review: update wine fields + set status to recognized so enrichment can proceed
+  const { mutate: confirmForEnrichment, isPending: confirming } = useMutation({
+    mutationFn: async ({ data }: { data: Partial<Wine> }) => {
+      await winesApi.update(id, data);
+      await winesApi.updateStatus(id, "recognized");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wines", id] });
+      queryClient.invalidateQueries({ queryKey: ["wines", "pending"] });
+    },
+    onError: (err: Error) => setActionError(err.message),
+  });
+
   const { mutate: consumeBottle, isPending: consuming } = useMutation({
     mutationFn: () =>
       cellarApi.consume(cellarEntry!.id, { quantity: consumeQty, occasion }),
@@ -110,13 +123,22 @@ export default function WineDetailClient() {
 
   if (!wine) return <div className="p-4 text-cream/50">Wine not found</div>;
 
-  // Pending/enriched wines: show editable form to fill or validate
+  // Pending/enriched/needs_review wines: show editable form to fill or validate
   if (
     wine.status === "enriched" ||
     wine.status === "recognized" ||
+    wine.status === "needs_review" ||
     wine.status === "pending_recognition" ||
     wine.status === "failed"
   ) {
+    const isNeedsReview = wine.status === "needs_review";
+    const statusLabel =
+      wine.status === "enriched" ? "Ready to validate"
+      : wine.status === "needs_review" ? "Needs your input"
+      : wine.status === "recognized" ? "Awaiting enrichment"
+      : wine.status === "failed" ? "Recognition failed"
+      : "Awaiting recognition";
+
     return (
       <div className="pb-8">
         <div className="relative h-48 bg-wood-dark">
@@ -140,14 +162,8 @@ export default function WineDetailClient() {
             <ArrowLeft size={20} className="text-cream" />
           </button>
           <div className="absolute bottom-4 left-4">
-            <span className="text-xs bg-gold/20 text-gold border border-gold/30 rounded-full px-2 py-0.5">
-              {wine.status === "enriched"
-              ? "Ready to validate"
-              : wine.status === "recognized"
-              ? "Awaiting enrichment"
-              : wine.status === "failed"
-              ? "Recognition failed"
-              : "Awaiting recognition"}
+            <span className={`text-xs border rounded-full px-2 py-0.5 ${isNeedsReview ? "bg-orange-900/30 text-orange-300 border-orange-600/30" : "bg-gold/20 text-gold border-gold/30"}`}>
+              {statusLabel}
             </span>
           </div>
         </div>
@@ -158,18 +174,41 @@ export default function WineDetailClient() {
               {actionError}
             </div>
           )}
+          {isNeedsReview && (
+            <div className="bg-orange-900/20 border border-orange-700/30 rounded-lg p-3 text-orange-300 text-sm">
+              The AI recognition had low confidence or left some fields empty. Please review and complete the information below before enrichment.
+              {wine.ai_confidence != null && (
+                <span className="ml-1 text-orange-400/70 text-xs">
+                  (confidence: {Math.round(wine.ai_confidence * 100)}%)
+                </span>
+              )}
+            </div>
+          )}
           <div>
             <h1 className="font-serif text-xl font-bold text-cream">{wine.name || "Unidentified bottle"}</h1>
-            <p className="text-cream/40 text-xs mt-0.5">Review and correct the AI data before adding to your cellar</p>
+            <p className="text-cream/40 text-xs mt-0.5">
+              {isNeedsReview
+                ? "Complete the missing fields, then confirm to proceed to enrichment"
+                : "Review and correct the AI data before adding to your cellar"}
+            </p>
           </div>
         </div>
 
         <div className="mt-4">
-          <WineValidationForm
-            wine={wine}
-            onValidate={(data, quantity) => validateWine({ data, quantity })}
-            isLoading={validating}
-          />
+          {isNeedsReview ? (
+            <WineValidationForm
+              wine={wine}
+              mode="review"
+              onValidate={(data) => confirmForEnrichment({ data })}
+              isLoading={confirming}
+            />
+          ) : (
+            <WineValidationForm
+              wine={wine}
+              onValidate={(data, quantity) => validateWine({ data, quantity })}
+              isLoading={validating}
+            />
+          )}
         </div>
 
         <div className="px-4">

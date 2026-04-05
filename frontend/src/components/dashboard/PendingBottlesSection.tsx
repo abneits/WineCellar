@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, PenLine, Sparkles, CheckCircle } from "lucide-react";
+import { Clock, PenLine, Sparkles, CheckCircle, AlertTriangle } from "lucide-react";
 import { winesApi } from "@/lib/api";
 import type { PendingWine } from "@/types";
 
@@ -78,6 +78,11 @@ export function PendingBottlesSection() {
     queryFn: () => winesApi.listPending("pending_recognition", 5),
   });
 
+  const { data: needsReviewWines = [] } = useQuery({
+    queryKey: ["wines", "pending", "needs_review"],
+    queryFn: () => winesApi.listPending("needs_review", 20),
+  });
+
   const { data: recognizedWines = [] } = useQuery({
     queryKey: ["wines", "pending", "recognized"],
     queryFn: () => winesApi.listPending("recognized", 20),
@@ -90,6 +95,7 @@ export function PendingBottlesSection() {
 
   if (
     pendingWines.length === 0 &&
+    needsReviewWines.length === 0 &&
     recognizedWines.length === 0 &&
     enrichedWines.length === 0
   )
@@ -115,6 +121,31 @@ export function PendingBottlesSection() {
                 >
                   <PenLine size={12} />
                   Fill
+                </Link>
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {needsReviewWines.length > 0 && (
+        <div className="space-y-2">
+          <SectionHeader
+            icon={<AlertTriangle size={14} className="text-orange-400" />}
+            title="Needs Your Input"
+            count={needsReviewWines.length}
+          />
+          {needsReviewWines.map((wine: PendingWine) => (
+            <PendingWineCard
+              key={wine.id}
+              wine={wine}
+              action={
+                <Link
+                  href={`/cellar/${wine.id}`}
+                  className="flex items-center gap-1 text-orange-400 text-xs font-medium shrink-0"
+                >
+                  <AlertTriangle size={12} />
+                  Review
                 </Link>
               }
             />

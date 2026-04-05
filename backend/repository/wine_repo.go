@@ -237,19 +237,20 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 	return result, rows.Err()
 }
 
-// UpdateRecognition applies AI vision recognition results and advances status to "recognized".
-func (r *wineRepo) UpdateRecognition(ctx context.Context, id uuid.UUID, req *models.RecognitionUpdateRequest) error {
+// UpdateRecognition applies AI vision recognition results and sets the given status
+// (either "recognized" or "needs_review" depending on confidence / completeness).
+func (r *wineRepo) UpdateRecognition(ctx context.Context, id uuid.UUID, req *models.RecognitionUpdateRequest, status string) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE wines SET
 			name=$1, producer=$2, vintage=$3, appellation=$4, region=$5, country=$6,
 			color=$7, grape_varieties=$8, alcohol_content=$9, description=$10,
 			ai_confidence=$11, ai_raw_response=$12,
-			status='recognized', updated_at=NOW()
-		WHERE id=$13`,
+			status=$13, updated_at=NOW()
+		WHERE id=$14`,
 		req.Name, req.Producer, req.Vintage, req.Appellation, req.Region, req.Country,
 		req.Color, req.GrapeVarieties, req.AlcoholContent, req.Description,
 		req.AIConfidence, req.AIRawResponse,
-		id,
+		status, id,
 	)
 	return err
 }

@@ -21,9 +21,11 @@ interface Props {
   wine: Wine;
   onValidate: (data: Partial<Wine>, quantity: number) => void;
   isLoading: boolean;
+  /** "validate" (default): add to cellar flow. "review": confirm data before enrichment, hides quantity. */
+  mode?: "validate" | "review";
 }
 
-export function WineValidationForm({ wine, onValidate, isLoading }: Props) {
+export function WineValidationForm({ wine, onValidate, isLoading, mode = "validate" }: Props) {
   const [form, setForm] = useState({
     name: wine.name ?? "",
     producer: wine.producer ?? "",
@@ -271,29 +273,31 @@ export function WineValidationForm({ wine, onValidate, isLoading }: Props) {
         </Field>
       </Section>
 
-      <Section title="Add to Cellar">
-        <Field label="Quantity">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-10 h-10 rounded-full bg-wood-dark border border-burgundy/30 flex items-center justify-center text-cream"
-            >
-              <Minus size={16} />
-            </button>
-            <span className="text-xl font-bold text-cream w-8 text-center">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.min(99, q + 1))}
-              className="w-10 h-10 rounded-full bg-wood-dark border border-burgundy/30 flex items-center justify-center text-cream"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-        </Field>
-      </Section>
+      {mode === "validate" && (
+        <Section title="Add to Cellar">
+          <Field label="Quantity">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="w-10 h-10 rounded-full bg-wood-dark border border-burgundy/30 flex items-center justify-center text-cream"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="text-xl font-bold text-cream w-8 text-center">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.min(99, q + 1))}
+                className="w-10 h-10 rounded-full bg-wood-dark border border-burgundy/30 flex items-center justify-center text-cream"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </Field>
+        </Section>
+      )}
 
       <Button
         type="submit"
@@ -301,7 +305,9 @@ export function WineValidationForm({ wine, onValidate, isLoading }: Props) {
         className="w-full bg-burgundy hover:bg-burgundy-600 text-cream"
         size="lg"
       >
-        {isLoading ? "Validating…" : "Validate & Add to Cellar"}
+        {isLoading
+          ? mode === "review" ? "Saving…" : "Validating…"
+          : mode === "review" ? "Confirm & Send to Enrichment" : "Validate & Add to Cellar"}
       </Button>
     </form>
   );

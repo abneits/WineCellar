@@ -17,7 +17,7 @@ type WineRepo interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	// n8n integration
 	ListPending(ctx context.Context, status string, limit int) ([]*models.PendingWine, error)
-	UpdateRecognition(ctx context.Context, id uuid.UUID, req *models.RecognitionUpdateRequest) error
+	UpdateRecognition(ctx context.Context, id uuid.UUID, req *models.RecognitionUpdateRequest, status string) error
 	UpdateEnrichment(ctx context.Context, id uuid.UUID, req *models.EnrichmentUpdateRequest) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
 }
