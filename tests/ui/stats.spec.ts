@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { apiCreateWine, apiAddToCellar, goto } from "./helpers/fixtures.js";
+import { test, expect, beforeEach } from "@playwright/test";
+import { apiCreateWine, apiAddToCellar, truncateAll, goto } from "./helpers/fixtures.js";
+
+beforeEach(async () => {
+  await truncateAll();
+});
 
 // ---------------------------------------------------------------------------
 // Stats — /stats
@@ -20,17 +24,16 @@ test.describe("Stats (/stats)", () => {
 
   test("displays a chart or graph element", async ({ page }) => {
     await goto(page, "/stats");
-    // Recharts renders SVG elements
     const chart = page.locator("svg").first();
     await expect(chart).toBeAttached({ timeout: 8000 });
   });
 
   test("color distribution section is present", async ({ page }) => {
+    // DB is clean — only this one red wine exists
     const wine = await apiCreateWine({ color: "red", name: "Stats Red" });
     await apiAddToCellar(wine.id, 3);
 
     await goto(page, "/stats");
-    // Look for "red" color reference in the chart legend or text
     await expect(page.getByText(/red|rouge/i).first()).toBeVisible({ timeout: 8000 });
   });
 
@@ -63,11 +66,11 @@ test.describe("Stats (/stats)", () => {
   });
 
   test("SVG charts are rendered after data loads", async ({ page }) => {
+    // DB is clean — only this wine exists
     const wine = await apiCreateWine({ color: "white", region: "Burgundy" });
     await apiAddToCellar(wine.id, 2);
 
     await goto(page, "/stats");
-    // Wait for SVG paths/rects (chart content) to appear
     await page.waitForSelector("svg path, svg rect", { timeout: 10_000 });
     const chartElements = page.locator("svg path, svg rect");
     await expect(chartElements.first()).toBeVisible();

@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { apiCreateWine, apiAddToCellar, goto } from "./helpers/fixtures.js";
+import { test, expect, beforeEach } from "@playwright/test";
+import { apiCreateWine, apiAddToCellar, truncateAll, goto } from "./helpers/fixtures.js";
+
+beforeEach(async () => {
+  await truncateAll();
+});
 
 // ---------------------------------------------------------------------------
 // Wine detail — /cellar/:id
@@ -57,7 +61,6 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 1);
 
     await goto(page, `/cellar/${wine.id}`);
-    // The page must NOT show __placeholder__ and must show the wine name
     await expect(page.getByText("__placeholder__")).not.toBeVisible();
     await expect(page.getByText("Dynamic Route Wine")).toBeVisible();
   });
@@ -79,7 +82,6 @@ test.describe("Wine detail (/cellar/:id)", () => {
     const consumeBtn = page.getByRole("button", { name: /consume|drink|ouvrir/i });
     await consumeBtn.click();
 
-    // Fill occasion field if present and confirm
     const occasionInput = page.getByRole("textbox", { name: /occasion/i })
       .or(page.getByPlaceholder(/occasion/i));
     if (await occasionInput.count() > 0) {
@@ -90,7 +92,7 @@ test.describe("Wine detail (/cellar/:id)", () => {
       await confirmBtn.click();
     }
 
-    // After consuming: quantity should be 3
+    // DB is clean — only 4 bottles exist, after consume = 3
     await expect(page.getByText("3")).toBeVisible({ timeout: 8000 });
   });
 
@@ -111,7 +113,6 @@ test.describe("Wine detail (/cellar/:id)", () => {
     const deleteBtn = page.getByRole("button", { name: /delete|supprimer/i });
     await deleteBtn.click();
 
-    // Confirm deletion if a dialog appears
     const confirmBtn = page.getByRole("button", { name: /confirm|yes|oui|valider/i });
     if (await confirmBtn.count() > 0) {
       await confirmBtn.click();
@@ -120,8 +121,6 @@ test.describe("Wine detail (/cellar/:id)", () => {
   });
 
   test("needs_review wine shows validation form", async ({ page, request }) => {
-    // Scan a wine then push to needs_review
-    const form = new FormData();
     const b64 = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQ==";
     const binary = Buffer.from(b64, "base64");
     const scanRes = await request.post("/api/wines/scan", {
@@ -147,7 +146,6 @@ test.describe("Wine detail (/cellar/:id)", () => {
     });
 
     await goto(page, `/cellar/${id}`);
-    // The validation form should be visible
     const form2 = page.getByRole("form").or(page.locator("form"));
     await expect(form2.first()).toBeVisible({ timeout: 8000 });
   });
@@ -157,7 +155,6 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 1);
 
     await goto(page, `/cellar/${wine.id}`);
-    // No horizontal overflow
     const hasHorizontalOverflow = await page.evaluate(() => {
       return document.documentElement.scrollWidth > document.documentElement.clientWidth;
     });

@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { apiCreateWine, apiAddToCellar, goto } from "./helpers/fixtures.js";
+import { test, expect, beforeEach } from "@playwright/test";
+import { apiCreateWine, apiAddToCellar, truncateAll, goto } from "./helpers/fixtures.js";
+
+beforeEach(async () => {
+  await truncateAll();
+});
 
 // ---------------------------------------------------------------------------
 // Calendar — /calendar
@@ -13,25 +17,16 @@ test.describe("Calendar (/calendar)", () => {
   });
 
   test("shows empty state when no maturity data", async ({ page }) => {
+    // DB is clean — no wines with peak_maturity set
     await goto(page, "/calendar");
-    // Either an empty message or a heading is shown
     const heading = page.getByRole("heading").first();
     await expect(heading).toBeVisible({ timeout: 8000 });
   });
 
-  test("shows maturity entries when wines have peak_maturity set", async ({
-    page,
-    request,
-  }) => {
+  test("shows maturity entries when wines have peak_maturity set", async ({ page, request }) => {
     const wine = await apiCreateWine({ name: "Maturity Wine", vintage: 2018 });
     await apiAddToCellar(wine.id, 2);
 
-    // Set peak maturity via enrichment endpoint
-    await request.put(`/api/wines/${wine.id}/status`, {
-      data: { status: "validated" },
-    });
-    // Patch directly using PUT enrichment (wine needs to be in a recognized/enriched state)
-    // Use direct API to set peak_maturity by going through recognition then enrichment
     await request.put(`/api/wines/${wine.id}/recognition`, {
       data: {
         name: "Maturity Wine",
@@ -80,14 +75,11 @@ test.describe("Calendar (/calendar)", () => {
     });
 
     await goto(page, "/calendar");
-    // A year (2026) should appear as a group header
+    // DB is clean — only this wine with peak_maturity_start=2026 exists
     await expect(page.getByText("2026")).toBeVisible({ timeout: 8000 });
   });
 
-  test("displays maturity status badges (ready / soon / not_yet)", async ({
-    page,
-    request,
-  }) => {
+  test("displays maturity status badges (ready / soon / not_yet)", async ({ page, request }) => {
     const wine = await apiCreateWine({ name: "Ready Wine" });
     await apiAddToCellar(wine.id, 1);
     await request.put(`/api/wines/${wine.id}/recognition`, {
@@ -98,7 +90,7 @@ test.describe("Calendar (/calendar)", () => {
         ai_confidence: 0.95, description: "D",
       },
     });
-    // Set peak maturity in the past so status = "ready"
+    // peak_maturity in the past → status = "ready"
     await request.put(`/api/wines/${wine.id}/enrichment`, {
       data: {
         tasting_notes: {}, food_pairings: [],
@@ -108,8 +100,7 @@ test.describe("Calendar (/calendar)", () => {
     });
 
     await goto(page, "/calendar");
-    const badge = page.getByText(/ready|soon|not.yet/i).first();
-    await expect(badge).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/ready|soon|not.yet/i).first()).toBeVisible({ timeout: 8000 });
   });
 
   test("clicking a wine navigates to wine detail", async ({ page, request }) => {

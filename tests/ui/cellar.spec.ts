@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { apiCreateWine, apiAddToCellar, goto } from "./helpers/fixtures.js";
+import { test, expect, beforeEach } from "@playwright/test";
+import { apiCreateWine, apiAddToCellar, truncateAll, goto } from "./helpers/fixtures.js";
+
+beforeEach(async () => {
+  await truncateAll();
+});
 
 // ---------------------------------------------------------------------------
 // Cellar list — /cellar
@@ -13,8 +17,8 @@ test.describe("Cellar (/cellar)", () => {
   });
 
   test("displays an empty state when cellar is empty", async ({ page }) => {
+    // DB is clean — cellar is guaranteed empty
     await goto(page, "/cellar");
-    // Either an empty message or simply 0 wine cards
     const cards = page.locator("[data-testid='wine-card'], .wine-card, article");
     const emptyMsg = page.getByText(/empty|no wine|aucun/i);
     const either = cards.or(emptyMsg);
@@ -38,11 +42,11 @@ test.describe("Cellar (/cellar)", () => {
   });
 
   test("search filter narrows displayed wines", async ({ page }) => {
+    // DB is clean — only these two wines exist
     await apiAddToCellar((await apiCreateWine({ name: "Château Filterable" })).id, 1);
     await apiAddToCellar((await apiCreateWine({ name: "Domaine Hidden" })).id, 1);
 
     await goto(page, "/cellar");
-    // Type in the search input
     const search = page.getByRole("searchbox").or(page.getByPlaceholder(/search|chercher/i));
     await search.fill("Filterable");
     await expect(page.getByText("Château Filterable")).toBeVisible();
@@ -50,11 +54,11 @@ test.describe("Cellar (/cellar)", () => {
   });
 
   test("color filter narrows displayed wines", async ({ page }) => {
+    // DB is clean — only one red and one white
     await apiAddToCellar((await apiCreateWine({ name: "Red Wine Filter", color: "red" })).id, 1);
     await apiAddToCellar((await apiCreateWine({ name: "White Wine Filter", color: "white" })).id, 1);
 
     await goto(page, "/cellar");
-    // Find a color filter button/select and click "white"
     const colorFilter = page.getByRole("button", { name: /white|blanc/i })
       .or(page.getByRole("option", { name: /white/i }));
     if (await colorFilter.count() > 0) {
@@ -78,10 +82,8 @@ test.describe("Cellar (/cellar)", () => {
       await apiAddToCellar((await apiCreateWine({ name: `Scroll Wine ${i}` })).id, 1);
     }
     await goto(page, "/cellar");
-    // Ensure content doesn't overflow silently
     const bodyOverflow = await page.evaluate(() => {
-      const body = document.body;
-      return getComputedStyle(body).overflow;
+      return getComputedStyle(document.body).overflow;
     });
     expect(bodyOverflow).not.toBe("hidden");
   });

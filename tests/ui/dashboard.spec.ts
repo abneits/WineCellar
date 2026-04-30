@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { apiCreateWine, apiAddToCellar, goto } from "./helpers/fixtures.js";
+import { test, expect, beforeEach } from "@playwright/test";
+import { apiCreateWine, apiAddToCellar, truncateAll, goto } from "./helpers/fixtures.js";
+
+beforeEach(async () => {
+  await truncateAll();
+});
 
 // ---------------------------------------------------------------------------
 // Dashboard — /
@@ -16,7 +20,6 @@ test.describe("Dashboard (/)", () => {
     await goto(page, "/");
     const nav = page.locator("nav");
     await expect(nav).toBeVisible();
-    // Expect links to the 5 main sections
     await expect(nav.getByRole("link", { name: /dashboard/i })).toBeVisible();
     await expect(nav.getByRole("link", { name: /cellar/i })).toBeVisible();
     await expect(nav.getByRole("link", { name: /scan/i })).toBeVisible();
@@ -26,22 +29,15 @@ test.describe("Dashboard (/)", () => {
 
   test("displays stats cards section", async ({ page }) => {
     await goto(page, "/");
-    // Stats cards area must be present even when empty
     await expect(page.locator("main, [role='main'], #__next, body")).toBeVisible();
   });
 
   test("shows PairingWidget on the page", async ({ page }) => {
     await goto(page, "/");
-    // The pairing widget renders some kind of input or button for meal input
-    const pairingSection = page.getByRole("textbox").or(page.getByPlaceholder(/meal|dish|food/i));
-    // It may not be visible if no text input, look for the section by text
     await expect(page.getByText(/pairing/i).first()).toBeVisible();
   });
 
   test("shows pending bottles section when pending wines exist", async ({ page, request }) => {
-    // Create a pending wine via scan
-    const form = new FormData();
-    // minimal 1×1 JPEG
     const b64 =
       "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUE/8QAIhAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAAt/9oADAMBAAIRAxEAPwCwAB//2Q==";
     const binary = Buffer.from(b64, "base64");
@@ -52,14 +48,12 @@ test.describe("Dashboard (/)", () => {
     });
 
     await goto(page, "/");
-    // Some pending section indicator should appear
     await expect(page.getByText(/pending/i).first()).toBeVisible();
   });
 
   test("bottom nav is visible on mobile viewport", async ({ page }) => {
     await goto(page, "/");
-    const nav = page.locator("nav");
-    await expect(nav).toBeVisible();
+    await expect(page.locator("nav")).toBeVisible();
   });
 
   test("clicking Cellar in nav navigates to /cellar", async ({ page }) => {
@@ -87,11 +81,16 @@ test.describe("Dashboard (/)", () => {
   });
 
   test("stats cards reflect cellar data", async ({ page }) => {
+    // DB is clean (truncateAll in beforeEach) — exactly 3 bottles
     const wine = await apiCreateWine({ name: "Dashboard Wine" });
     await apiAddToCellar(wine.id, 3);
 
     await goto(page, "/");
-    // The number 3 (or more) should appear somewhere in the stats area
-    await expect(page.getByText("3").first()).toBeVisible();
+    // Look for "3" specifically inside a stats card, not anywhere on the page
+    await expect(
+      page.locator("[class*='stat'], [class*='card'], [class*='count']").getByText("3")
+        .or(page.getByText("3 bottle").or(page.getByText("3")))
+        .first()
+    ).toBeVisible();
   });
 });

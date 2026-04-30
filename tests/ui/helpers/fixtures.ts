@@ -4,8 +4,37 @@
  */
 
 import { type Page, request as playwrightRequest } from "@playwright/test";
+import pg from "pg";
 
 const APP_URL = (process.env.APP_URL ?? "http://localhost:8080").replace(/\/$/, "");
+
+// ---------------------------------------------------------------------------
+// DB client (direct cleanup — mirrors api/helpers/fixtures.ts)
+// ---------------------------------------------------------------------------
+
+let _pool: pg.Pool | null = null;
+
+function getPool(): pg.Pool {
+  if (!_pool) {
+    const url = process.env.TEST_DATABASE_URL;
+    if (!url) throw new Error("TEST_DATABASE_URL is not set");
+    _pool = new pg.Pool({ connectionString: url });
+  }
+  return _pool;
+}
+
+/** Wipe all app tables. Call in beforeEach of every UI spec. */
+export async function truncateAll(): Promise<void> {
+  const pool = getPool();
+  await pool.query(`
+    TRUNCATE TABLE
+      tasting_notes,
+      consumption_log,
+      cellar_entries,
+      wines
+    RESTART IDENTITY CASCADE
+  `);
+}
 
 // ---------------------------------------------------------------------------
 // API shortcuts (no browser needed)
