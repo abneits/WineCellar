@@ -138,3 +138,38 @@ export interface CreateTastingRequest {
   comment: string;
   tasted_at?: string;
 }
+
+export interface CountByLabel {
+  label: string;
+  count: number;
+}
+
+export interface ConsumptionByMonth {
+  month: string; // "2025-01"
+  count: number;
+}
+
+export interface RatingDistribution {
+  rating: number;
+  count: number;
+}
+
+export interface TopRatedWine {
+  wine_id: string;
+  name: string;
+  vintage?: number;
+  avg_rating: number;
+  note_count: number;
+}
+
+export interface StatsResponse {
+  total_bottles: number;
+  unique_wines: number;
+  by_color: CountByLabel[];
+  by_region: CountByLabel[];
+  by_vintage: CountByLabel[];
+  total_consumed: number;
+  consumption_by_month: ConsumptionByMonth[];
+  rating_distribution: RatingDistribution[];
+  top_rated: TopRatedWine[];
+}

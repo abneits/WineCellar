@@ -6,6 +6,7 @@ import { StatsCards } from "@/components/dashboard/StatsCards";
 import { RecentWines } from "@/components/dashboard/RecentWines";
 import { PendingRatingsModal } from "@/components/dashboard/PendingRatingsModal";
 import { PendingBottlesSection } from "@/components/dashboard/PendingBottlesSection";
+import { PairingWidget } from "@/components/dashboard/PairingWidget";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
@@ -37,6 +38,8 @@ export default function DashboardPage() {
       ) : stats ? (
         <StatsCards stats={stats} />
       ) : null}
+
+      <PairingWidget />
 
       <PendingBottlesSection />
 

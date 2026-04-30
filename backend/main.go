@@ -44,15 +44,30 @@ func main() {
 	log.Println("Migrations applied successfully")
 
 	// Repositories
-	wineRepo := repository.NewWineRepo(pool)
+	wineRepo := repository.NewWineRepo(pool, cfg.ThumbnailWidth)
 	cellarRepo := repository.NewCellarRepo(pool)
 	tastingRepo := repository.NewTastingRepo(pool)
+	statsRepo := repository.NewStatsRepo(pool)
+
+	// Queue repository (optional — only if QUEUE_DATABASE_URL is set)
+	var queueRepo repository.QueueRepo
+	if cfg.QueueDatabaseURL != "" {
+		queuePool, err := repository.NewQueuePool(ctx, cfg.QueueDatabaseURL)
+		if err != nil {
+			log.Printf("WARN queue database unavailable, task queuing disabled: %v", err)
+		} else {
+			defer queuePool.Close()
+			queueRepo = repository.NewQueueRepo(queuePool)
+			log.Println("Queue database connected")
+		}
+	}
 
 	// Handlers
-	wineHandler := handlers.NewWineHandler(wineRepo, cfg.MaxImageSizeMB)
+	wineHandler := handlers.NewWineHandler(wineRepo, queueRepo, cfg.MaxImageSizeMB, cfg.AppBaseURL)
 	cellarHandler := handlers.NewCellarHandler(cellarRepo)
 	tastingHandler := handlers.NewTastingHandler(tastingRepo)
 	aiHandler := handlers.NewAIHandler(cfg.N8NPairingWebhookURL, pool)
+	statsHandler := handlers.NewStatsHandler(statsRepo)
 
 	// Router
 	r := chi.NewRouter()
@@ -95,6 +110,9 @@ func main() {
 
 		// AI (proxied to n8n)
 		r.Post("/ai/pairing", aiHandler.Pairing)
+
+		// Stats
+		r.Get("/stats", statsHandler.Get)
 	})
 
 	// Health check

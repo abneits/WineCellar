@@ -1,0 +1,22 @@
+{
+  "name": "wine-cellar-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:api && npm run test:ui",
+    "test:api": "vitest run api/",
+    "test:ui": "playwright test ui/",
+    "test:ui:headed": "playwright test ui/ --headed",
+    "test:ui:report": "playwright show-report"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@types/node": "^20.12.0",
+    "@types/pg": "^8.11.5",
+    "typescript": "^5.4.5",
+    "vitest": "^1.5.0"
+  }
+}

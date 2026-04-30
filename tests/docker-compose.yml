@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # URL of the already-running WineCellar app
+      - APP_URL=${APP_URL:-http://host.docker.internal:8080}
+      # Separate PostgreSQL test database (must exist and have migrations applied)
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
+    # Use host network so the container can reach services on the host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Override CMD to run only API or UI tests:
+    #   docker compose run tests npm run test:api
+    #   docker compose run tests npm run test:ui

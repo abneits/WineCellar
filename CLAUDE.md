@@ -4,8 +4,8 @@
 Self-hosted wine cellar management app. Scan bottles, manage inventory, rate wines, get food pairing suggestions. AI processing is fully offloaded to external n8n workflows — the backend has zero AI dependency. Single Docker container serves both frontend and backend. Mobile-first.
 
 ## Tech Stack (DO NOT change these choices)
-- **Backend**: Go 1.22+ — Chi router, pgx for PostgreSQL, standard library where possible
-- **Frontend**: Next.js 14+ (App Router) — TypeScript, Tailwind CSS, shadcn/ui components
+- **Backend**: Go 1.26+ — Chi router, pgx for PostgreSQL, standard library where possible
+- **Frontend**: Next.js 16+ (App Router) — TypeScript, Tailwind CSS v4, shadcn/ui components (@base-ui/react)
 - **Database**: PostgreSQL 15+ (remote, already running — do NOT create Docker service for it)
 - **AI Processing**: Handled entirely by n8n (external) — backend only proxies webhook calls
 - **Containerization**: Single Dockerfile — multi-stage build, Go binary serves API on :8080, Next.js static export served by Go or reverse-proxied
@@ -67,23 +67,20 @@ wine-cellar-manager/
 ├── backend/
 │   ├── main.go                 # Entry point — serves API + static files
 │   ├── config/                 # Env config loading
-│   ├── handlers/               # HTTP handlers (wine, cellar, tasting, webhook proxy)
+│   ├── handlers/               # HTTP handlers (wine, cellar, tasting, ai, stats)
 │   ├── models/                 # Go structs matching DB schema
-│   ├── services/               # Business logic + n8n webhook client
 │   ├── repository/             # Database queries (pgx)
-│   ├── middleware/              # CORS, logging
+│   ├── middleware/             # CORS, logging
 │   └── migrations/             # SQL migration files
 │
 ├── frontend/
 │   ├── package.json
-│   ├── next.config.js          # output: 'export' for static build
-│   ├── tailwind.config.js
+│   ├── next.config.ts          # output: 'export' for static build
 │   └── src/
 │       ├── app/                # App Router pages
 │       ├── components/
-│       ├── hooks/
-│       ├── lib/                # API client, utils
-│       └── types/
+│       ├── lib/                # API client (api.ts)
+│       └── types/              # TypeScript interfaces (index.ts)
 ```
 
 ## Database Schema (PostgreSQL)
@@ -92,7 +89,7 @@ wine-cellar-manager/
 
 ### wines
 - `id` UUID PK, `name` VARCHAR(255), `appellation` VARCHAR(255), `region` VARCHAR(255), `country` VARCHAR(100)
-- `producer` VARCHAR(255), `vintage` INTEGER, `color` VARCHAR(20) CHECK (red/white/rosé/sparkling/dessert/orange)
+- `producer` VARCHAR(255), `vintage` INTEGER, `color` VARCHAR(20) CHECK (red/white/rosé/sparkling/dessert/orange/yellow)
 - `grape_varieties` JSONB, `alcohol_content` DECIMAL(4,2), `description` TEXT
 - `tasting_notes` JSONB, `food_pairings` JSONB
 - `peak_maturity_start` INTEGER, `peak_maturity_end` INTEGER, `average_price` DECIMAL(10,2)
@@ -149,6 +146,9 @@ PUT    /api/tastings/:id            — Update note
 
 # AI (proxied to n8n webhook)
 POST   /api/ai/pairing              — Proxy: builds payload (prompt + cellar inventory) → calls n8n webhook → returns response
+
+# Stats
+GET    /api/stats                   — Inventory, distribution, consumption, ratings aggregates
 ```
 
 ## Wine Status Lifecycle
@@ -213,8 +213,9 @@ Payload sent to n8n pairing webhook:
 - **Components**: Use shadcn/ui as base, customize with wine theme.
 - **Interactions**: Touch-friendly (44px min targets), swipe gestures on lists.
 - **Scan page**: After upload → "Bottle saved! It will be analyzed overnight." + "Fill in details now" button.
-- **Dashboard**: Section for pending bottles with thumbnails + "Fill manually" button.
+- **Dashboard**: Stats cards → Food Pairing widget → Pending bottles → Recently Added.
 - **Cellar list**: Status badge on wines (pending / recognized / needs validation).
+- **Bottom nav**: Dashboard, Cellar, Scan, Stats, Calendar. No Pairings tab (widget intégré au dashboard).
 
 ## Code Style
 
@@ -238,8 +239,14 @@ Payload sent to n8n pairing webhook:
 ## Environment Variables
 
 ```env
-# Database
+# Wine Cellar database
 DATABASE_URL=postgresql://user:password@host:5432/winecellar
+
+# Shared LLM queue database (optional — task queuing disabled if not set)
+QUEUE_DATABASE_URL=postgresql://user:password@host:5432/shared
+
+# Base URL of this app as reachable by n8n (used to build callback URLs)
+APP_BASE_URL=http://wine-cellar:8080
 
 # Server
 SERVER_PORT=8080
@@ -253,10 +260,47 @@ MAX_IMAGE_SIZE_MB=10
 THUMBNAIL_WIDTH=300
 ```
 
+## LLM Queue
+
+The backend inserts tasks into a shared `llm_queue` table in a separate PostgreSQL database. This table is generic and shared across all projects.
+
+Schema reference: `docs/llm_queue.sql` — run manually on the shared database.
+
+### Task flow (wine)
+```
+POST /api/wines/scan
+  → INSERT wine (pending_recognition)
+  → INSERT llm_queue (wine_detection, callback=/api/wines/:id/recognition)
+
+n8n processes wine_detection → POST /api/wines/:id/recognition
+  → UPDATE wine (recognized)
+  → INSERT llm_queue (wine_enrichment, callback=/api/wines/:id/enrichment)
+
+n8n processes wine_enrichment → POST /api/wines/:id/enrichment
+  → UPDATE wine (enriched)
+```
+
+### Degraded mode
+If `QUEUE_DATABASE_URL` is not set, `queueRepo` is `nil`. Scan still saves the wine, task insertion is skipped with a warning log. No crash.
+
+### n8n flow (generic, one flow for all projects)
+```
+CRON every minute
+  → SELECT FROM llm_queue WHERE status='pending' AND retry_count < max_retries LIMIT 1
+  → UPDATE status='processing'
+  → POST Ollama with system_prompt + user_prompt
+  → Try JSON.parse(response)
+  → UPDATE llm_queue SET status='done', raw_response=..., parsed_response=...
+  → If callback_url → POST callback_url with parsed_response
+  → UPDATE callback_done=true (or callback_error on failure)
+  → On Ollama error → retry_count+1, back to 'pending' or 'failed'
+```
+
 ## Important Constraints
 - **NO Ollama dependency** — do not import, install, or call Ollama from the backend. All AI goes through n8n.
 - **NO n8n workflow code** — the backend only exposes endpoints for n8n to call and proxies webhook requests. n8n workflows are built separately.
-- PostgreSQL is EXTERNAL — never add it to docker-compose
+- PostgreSQL (winecellar) is EXTERNAL — never add it to docker-compose
+- PostgreSQL (shared queue) is EXTERNAL — never add it to docker-compose
 - n8n is EXTERNAL — never add it to docker-compose
 - Images stored in PostgreSQL as BYTEA — no external file storage
 - No authentication system (single user, local network)

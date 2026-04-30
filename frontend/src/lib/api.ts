@@ -56,6 +56,7 @@ import type {
   Wine, ScanQueuedResponse, PendingWine, ListWinesResponse,
   CellarEntry, CellarStats, MaturityEntry, TastingNote, PendingRating,
   PairingRecommendation, AddToCellarRequest, ConsumeRequest, CreateTastingRequest,
+  StatsResponse,
 } from "@/types";
 
 export const winesApi = {
@@ -135,4 +136,8 @@ export const aiApi = {
       method: "POST",
       body: JSON.stringify({ meal }),
     }),
+};
+
+export const statsApi = {
+  get: () => request<StatsResponse>("/api/stats"),
 };

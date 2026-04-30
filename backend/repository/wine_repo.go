@@ -19,11 +19,15 @@ import (
 )
 
 type wineRepo struct {
-	db *pgxpool.Pool
+	db             *pgxpool.Pool
+	thumbnailWidth int
 }
 
-func NewWineRepo(db *pgxpool.Pool) WineRepo {
-	return &wineRepo{db: db}
+func NewWineRepo(db *pgxpool.Pool, thumbnailWidth int) WineRepo {
+	if thumbnailWidth <= 0 {
+		thumbnailWidth = 300
+	}
+	return &wineRepo{db: db, thumbnailWidth: thumbnailWidth}
 }
 
 func (r *wineRepo) Create(ctx context.Context, wine *models.Wine, imageData []byte) error {
@@ -47,7 +51,7 @@ func (r *wineRepo) Create(ctx context.Context, wine *models.Wine, imageData []by
 	var thumbnail []byte
 	if len(imageData) > 0 {
 		var err error
-		thumbnail, err = generateThumbnail(imageData, 300)
+		thumbnail, err = generateThumbnail(imageData, r.thumbnailWidth)
 		if err != nil {
 			// Non-fatal: unsupported format or corrupt image — save without thumbnail
 			fmt.Printf("warn: generate thumbnail: %v\n", err)

@@ -18,11 +18,18 @@ import (
 
 type WineHandler struct {
 	repo           repository.WineRepo
+	queueRepo      repository.QueueRepo // nil if QUEUE_DATABASE_URL not configured
 	maxImageSizeMB int
+	appBaseURL     string
 }
 
-func NewWineHandler(repo repository.WineRepo, maxImageSizeMB int) *WineHandler {
-	return &WineHandler{repo: repo, maxImageSizeMB: maxImageSizeMB}
+func NewWineHandler(repo repository.WineRepo, queueRepo repository.QueueRepo, maxImageSizeMB int, appBaseURL string) *WineHandler {
+	return &WineHandler{
+		repo:           repo,
+		queueRepo:      queueRepo,
+		maxImageSizeMB: maxImageSizeMB,
+		appBaseURL:     appBaseURL,
+	}
 }
 
 func (h *WineHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -164,7 +171,7 @@ func (h *WineHandler) GetImage(w http.ResponseWriter, r *http.Request) {
 }
 
 // Scan saves the bottle photo and creates a wine record with status "pending_recognition".
-// No AI call is made — recognition is handled overnight by n8n.
+// If QUEUE_DATABASE_URL is configured, a wine_detection task is inserted into llm_queue.
 func (h *WineHandler) Scan(w http.ResponseWriter, r *http.Request) {
 	maxBytes := int64(h.maxImageSizeMB) << 20
 	r.ParseMultipartForm(maxBytes)
@@ -190,6 +197,16 @@ func (h *WineHandler) Scan(w http.ResponseWriter, r *http.Request) {
 	if err := h.repo.Create(r.Context(), wine, imageData); err != nil {
 		jsonError(w, "failed to save bottle", http.StatusInternalServerError)
 		return
+	}
+
+	// Queue detection task if queue is configured (non-blocking — log and continue on error)
+	if h.queueRepo != nil {
+		task := repository.WineDetectionTask(wine.ID, imageData, h.appBaseURL)
+		if err := h.queueRepo.InsertTask(r.Context(), task); err != nil {
+			log.Printf("WARN queue wine_detection (wine=%s): %v", wine.ID, err)
+		} else {
+			log.Printf("INFO queued wine_detection (wine=%s)", wine.ID)
+		}
 	}
 
 	jsonResponseStatus(w, models.ScanQueuedResponse{
@@ -252,6 +269,22 @@ func (h *WineHandler) UpdateRecognition(w http.ResponseWriter, r *http.Request) 
 		jsonError(w, fmt.Sprintf("failed to update recognition: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+
+	// Queue enrichment task only if recognition succeeded with sufficient confidence
+	if status == "recognized" && h.queueRepo != nil {
+		task := repository.WineEnrichmentTask(
+			id,
+			req.Name, req.Producer, req.Appellation, req.Region, req.Country,
+			req.Vintage,
+			h.appBaseURL,
+		)
+		if err := h.queueRepo.InsertTask(r.Context(), task); err != nil {
+			log.Printf("WARN queue wine_enrichment (wine=%s): %v", id, err)
+		} else {
+			log.Printf("INFO queued wine_enrichment (wine=%s)", id)
+		}
+	}
+
 	jsonResponse(w, map[string]string{"status": status})
 }
 
