@@ -1,7 +1,9 @@
 version: "3.9"
 
 services:
-  tests:
+  wine-cellar-tests:
+    container_name: wine-cellar-tests
+    image: wine-cellar-tests:latest
     build:
       context: .
       dockerfile: Dockerfile
