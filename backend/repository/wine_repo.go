@@ -250,6 +250,12 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 // UpdateRecognition applies AI vision recognition results and sets the given status
 // (either "recognized" or "needs_review" depending on confidence / completeness).
 func (r *wineRepo) UpdateRecognition(ctx context.Context, id uuid.UUID, req *models.RecognitionUpdateRequest, status string) error {
+	// Ensure color is never empty — CHECK constraint requires a valid enum value.
+	// A missing color will have already triggered needs_review in the handler.
+	color := req.Color
+	if color == "" {
+		color = "red"
+	}
 	tag, err := r.db.Exec(ctx, `
 		UPDATE wines SET
 			name=$1, producer=$2, vintage=$3, appellation=$4, region=$5, country=$6,
@@ -258,7 +264,7 @@ func (r *wineRepo) UpdateRecognition(ctx context.Context, id uuid.UUID, req *mod
 			status=$13, updated_at=NOW()
 		WHERE id=$14`,
 		req.Name, req.Producer, req.Vintage, req.Appellation, req.Region, req.Country,
-		req.Color, req.GrapeVarieties, req.AlcoholContent, req.Description,
+		color, req.GrapeVarieties, req.AlcoholContent, req.Description,
 		req.AIConfidence, req.AIRawResponse,
 		status, id,
 	)

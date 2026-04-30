@@ -128,6 +128,7 @@ func (h *WineHandler) CreateWithImage(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to save wine", http.StatusInternalServerError)
 		return
 	}
+	wine.HasImage = len(imageData) > 0
 	jsonResponseStatus(w, wine, http.StatusCreated)
 }
 

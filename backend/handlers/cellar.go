@@ -41,8 +41,11 @@ func (h *CellarHandler) Add(w http.ResponseWriter, r *http.Request) {
 		WineID:        req.WineID,
 		Quantity:      req.Quantity,
 		Location:      req.Location,
-		PurchaseDate:  req.PurchaseDate,
 		PurchasePrice: req.PurchasePrice,
+	}
+	if req.PurchaseDate != nil {
+		t := req.PurchaseDate.Time
+		entry.PurchaseDate = &t
 	}
 	if err := h.repo.Add(r.Context(), entry); err != nil {
 		log.Printf("ERROR add to cellar (wine_id=%s): %v", req.WineID, err)
