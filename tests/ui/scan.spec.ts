@@ -67,22 +67,17 @@ test.describe("Scan (/scan)", () => {
       await page.getByText("Fill in details now").click();
     }
 
-    const nameInput = page.getByRole("textbox", { name: /name|nom/i })
-      .or(page.locator('input[name="name"]'));
-    if (await nameInput.count() > 0) {
-      await nameInput.fill("Manual Scan Wine");
-    }
+    // The WineForm inputs have no name/id attributes — use placeholders to target them
+    const nameInput = page.getByPlaceholder("Château Margaux").first();
+    await nameInput.fill("Manual Scan Wine");
 
-    const colorSelect = page.getByRole("combobox", { name: /color|couleur/i });
-    if (await colorSelect.count() > 0) {
-      await colorSelect.selectOption("red");
-    }
+    // Wait for the button to become enabled (form.name is now truthy)
+    const submitBtn = page.getByRole("button", { name: /add to cellar/i });
+    await expect(submitBtn).toBeEnabled({ timeout: 3_000 });
+    await submitBtn.click();
 
-    const submitBtn = page.getByRole("button", { name: /save|add|créer|valider|submit/i });
-    if (await submitBtn.count() > 0) {
-      await submitBtn.click();
-      await expect(page).not.toHaveURL(/\/scan$/, { timeout: 8000 });
-    }
+    // Should redirect away from /scan
+    await expect(page).not.toHaveURL(/\/scan$/, { timeout: 10_000 });
   });
 
   test("page has no horizontal overflow on mobile", async ({ page }) => {
