@@ -48,9 +48,14 @@ test.describe("Stats (/stats)", () => {
     await expect(page.getByRole("heading", { name: /consumption/i })).toBeVisible({ timeout: 8000 });
   });
 
-  test("top rated wines section is rendered", async ({ page }) => {
+  test("top rated wines section is rendered when data exists", async ({ page, request }) => {
+    // "Top rated" section is only rendered when top_rated.length > 0 — create a tasting note
+    const wine = await apiCreateWine({ name: "Top Rated Wine" });
+    await request.post("/api/tastings", {
+      data: { wine_id: wine.id, rating: 5, comment: "Excellent" },
+    });
+
     await goto(page, "/stats");
-    // Section heading is exactly "Top rated"
     await expect(page.getByRole("heading", { name: /top rated/i })).toBeVisible({ timeout: 8000 });
   });
 

@@ -111,11 +111,13 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 1);
 
     await goto(page, `/cellar/${wine.id}`);
+
+    // Register dialog handler BEFORE clicking — auto-accept window.confirm()
+    page.on("dialog", (dialog) => dialog.accept());
+
     const deleteBtn = page.getByRole("button", { name: /delete wine/i });
     await deleteBtn.click();
 
-    // The app uses window.confirm() — Playwright auto-accepts it by default
-    // Wait for navigation to /cellar (list page)
     await expect(page).toHaveURL(/\/cellar$/, { timeout: 10_000 });
   });
 
