@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test": "npm run test:api && npm run test:ui",
-    "test:api": "vitest run --config vitest.config.ts 'api/**/*.test.ts'",
+    "test:api": "vitest run --config vitest.config.ts --reporter=verbose api/",
     "test:ui": "playwright test ui/",
     "test:ui:headed": "playwright test ui/ --headed",
     "test:ui:report": "playwright show-report"
