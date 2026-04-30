@@ -13,7 +13,7 @@
     "pg": "^8.11.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.44.0",
+    "@playwright/test": "^1.59.1",
     "@types/node": "^20.12.0",
     "@types/pg": "^8.11.5",
     "typescript": "^5.4.5",
