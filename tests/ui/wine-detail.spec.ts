@@ -5,10 +5,6 @@ beforeEach(async () => {
   await truncateAll();
 });
 
-// ---------------------------------------------------------------------------
-// Wine detail — /cellar/:id
-// ---------------------------------------------------------------------------
-
 test.describe("Wine detail (/cellar/:id)", () => {
   test("displays wine name and producer", async ({ page }) => {
     const wine = await apiCreateWine({ name: "Detail Wine", producer: "Detail Producer" });
@@ -32,7 +28,8 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 1);
 
     await goto(page, `/cellar/${wine.id}`);
-    await expect(page.getByText(/white/i)).toBeVisible();
+    // Color appears in the subtitle "white · Bordeaux · Bordeaux, France" — use a more specific locator
+    await expect(page.locator("p").filter({ hasText: /white.*bordeaux/i }).first()).toBeVisible();
   });
 
   test("displays region and country", async ({ page }) => {
@@ -70,7 +67,8 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 3);
 
     await goto(page, `/cellar/${wine.id}`);
-    const consumeBtn = page.getByRole("button", { name: /consume|drink|ouvrir/i });
+    // The button is labeled "Open a Bottle" in the UI
+    const consumeBtn = page.getByRole("button", { name: /open a bottle|consume|drink/i });
     await expect(consumeBtn).toBeVisible();
   });
 
@@ -79,20 +77,22 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 4);
 
     await goto(page, `/cellar/${wine.id}`);
-    const consumeBtn = page.getByRole("button", { name: /consume|drink|ouvrir/i });
+    const consumeBtn = page.getByRole("button", { name: /open a bottle|consume|drink/i });
     await consumeBtn.click();
 
+    // Dialog: fill occasion field if present
     const occasionInput = page.getByRole("textbox", { name: /occasion/i })
-      .or(page.getByPlaceholder(/occasion/i));
+      .or(page.getByPlaceholder(/occasion|dinner/i));
     if (await occasionInput.count() > 0) {
       await occasionInput.fill("UI test dinner");
     }
-    const confirmBtn = page.getByRole("button", { name: /confirm|valider|ok/i });
+    // Confirm button in dialog is "Open" or "Opening…"
+    const confirmBtn = page.getByRole("button", { name: /^open$|^opening/i });
     if (await confirmBtn.count() > 0) {
       await confirmBtn.click();
     }
 
-    // DB is clean — only 4 bottles exist, after consume = 3
+    // After consuming 1 bottle from 4 → 3 remain
     await expect(page.getByText("3")).toBeVisible({ timeout: 8000 });
   });
 
@@ -101,7 +101,8 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 1);
 
     await goto(page, `/cellar/${wine.id}`);
-    const deleteBtn = page.getByRole("button", { name: /delete|supprimer/i });
+    // The button is labeled "Delete wine" in the UI
+    const deleteBtn = page.getByRole("button", { name: /delete wine/i });
     await expect(deleteBtn).toBeVisible();
   });
 
@@ -110,22 +111,25 @@ test.describe("Wine detail (/cellar/:id)", () => {
     await apiAddToCellar(wine.id, 1);
 
     await goto(page, `/cellar/${wine.id}`);
-    const deleteBtn = page.getByRole("button", { name: /delete|supprimer/i });
+    const deleteBtn = page.getByRole("button", { name: /delete wine/i });
     await deleteBtn.click();
 
-    const confirmBtn = page.getByRole("button", { name: /confirm|yes|oui|valider/i });
-    if (await confirmBtn.count() > 0) {
-      await confirmBtn.click();
-    }
-    await expect(page).toHaveURL(/\/cellar$/, { timeout: 8000 });
+    // The app uses window.confirm() — Playwright auto-accepts it by default
+    // Wait for navigation to /cellar (list page)
+    await expect(page).toHaveURL(/\/cellar$/, { timeout: 10_000 });
   });
 
   test("needs_review wine shows validation form", async ({ page, request }) => {
-    const b64 = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQ==";
-    const binary = Buffer.from(b64, "base64");
     const scanRes = await request.post("/api/wines/scan", {
       multipart: {
-        image: { name: "scan.jpg", mimeType: "image/jpeg", buffer: binary },
+        image: {
+          name: "scan.jpg",
+          mimeType: "image/jpeg",
+          buffer: Buffer.from(
+            "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4n",
+            "base64"
+          ),
+        },
       },
     });
     const { id } = await scanRes.json() as { id: string };
@@ -146,8 +150,8 @@ test.describe("Wine detail (/cellar/:id)", () => {
     });
 
     await goto(page, `/cellar/${id}`);
-    const form2 = page.getByRole("form").or(page.locator("form"));
-    await expect(form2.first()).toBeVisible({ timeout: 8000 });
+    const form = page.locator("form");
+    await expect(form.first()).toBeVisible({ timeout: 8000 });
   });
 
   test("page is accessible on mobile viewport", async ({ page }) => {

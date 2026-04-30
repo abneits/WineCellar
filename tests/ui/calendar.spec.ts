@@ -5,10 +5,6 @@ beforeEach(async () => {
   await truncateAll();
 });
 
-// ---------------------------------------------------------------------------
-// Calendar — /calendar
-// ---------------------------------------------------------------------------
-
 test.describe("Calendar (/calendar)", () => {
   test("loads without errors", async ({ page }) => {
     await goto(page, "/calendar");
@@ -17,7 +13,6 @@ test.describe("Calendar (/calendar)", () => {
   });
 
   test("shows empty state when no maturity data", async ({ page }) => {
-    // DB is clean — no wines with peak_maturity set
     await goto(page, "/calendar");
     const heading = page.getByRole("heading").first();
     await expect(heading).toBeVisible({ timeout: 8000 });
@@ -29,24 +24,17 @@ test.describe("Calendar (/calendar)", () => {
 
     await request.put(`/api/wines/${wine.id}/recognition`, {
       data: {
-        name: "Maturity Wine",
-        producer: "Domaine",
-        vintage: 2018,
-        appellation: "Bordeaux",
-        region: "Bordeaux",
-        country: "France",
-        color: "red",
-        grape_varieties: ["Merlot"],
-        ai_confidence: 0.92,
-        description: "Maturity test",
+        name: "Maturity Wine", producer: "Domaine", vintage: 2018,
+        appellation: "Bordeaux", region: "Bordeaux", country: "France",
+        color: "red", grape_varieties: ["Merlot"],
+        ai_confidence: 0.92, description: "Maturity test",
       },
     });
     await request.put(`/api/wines/${wine.id}/enrichment`, {
       data: {
         tasting_notes: { nose: "Berry", palate: "Smooth", finish: "Long" },
         food_pairings: ["lamb"],
-        peak_maturity_start: 2025,
-        peak_maturity_end: 2030,
+        peak_maturity_start: 2025, peak_maturity_end: 2030,
         enrichment_confidence: 0.88,
       },
     });
@@ -75,8 +63,8 @@ test.describe("Calendar (/calendar)", () => {
     });
 
     await goto(page, "/calendar");
-    // DB is clean — only this wine with peak_maturity_start=2026 exists
-    await expect(page.getByText("2026")).toBeVisible({ timeout: 8000 });
+    // Year heading is an h2 — use role to avoid strict mode violation
+    await expect(page.getByRole("heading", { name: "2026" })).toBeVisible({ timeout: 8000 });
   });
 
   test("displays maturity status badges (ready / soon / not_yet)", async ({ page, request }) => {
@@ -90,7 +78,7 @@ test.describe("Calendar (/calendar)", () => {
         ai_confidence: 0.95, description: "D",
       },
     });
-    // peak_maturity in the past → status = "ready"
+    // Peak maturity in the past → status = "ready"
     await request.put(`/api/wines/${wine.id}/enrichment`, {
       data: {
         tasting_notes: {}, food_pairings: [],

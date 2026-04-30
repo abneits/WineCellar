@@ -5,10 +5,6 @@ beforeEach(async () => {
   await truncateAll();
 });
 
-// ---------------------------------------------------------------------------
-// Cellar list — /cellar
-// ---------------------------------------------------------------------------
-
 test.describe("Cellar (/cellar)", () => {
   test("loads without errors", async ({ page }) => {
     await goto(page, "/cellar");
@@ -17,7 +13,6 @@ test.describe("Cellar (/cellar)", () => {
   });
 
   test("displays an empty state when cellar is empty", async ({ page }) => {
-    // DB is clean — cellar is guaranteed empty
     await goto(page, "/cellar");
     const cards = page.locator("[data-testid='wine-card'], .wine-card, article");
     const emptyMsg = page.getByText(/empty|no wine|aucun/i);
@@ -38,11 +33,11 @@ test.describe("Cellar (/cellar)", () => {
     await apiAddToCellar(wine.id, 6);
 
     await goto(page, "/cellar");
-    await expect(page.getByText("6")).toBeVisible();
+    // Use exact role to avoid strict mode violation — the quantity appears in a <span>
+    await expect(page.locator("span").filter({ hasText: /^6$/ }).first()).toBeVisible();
   });
 
   test("search filter narrows displayed wines", async ({ page }) => {
-    // DB is clean — only these two wines exist
     await apiAddToCellar((await apiCreateWine({ name: "Château Filterable" })).id, 1);
     await apiAddToCellar((await apiCreateWine({ name: "Domaine Hidden" })).id, 1);
 
@@ -54,7 +49,6 @@ test.describe("Cellar (/cellar)", () => {
   });
 
   test("color filter narrows displayed wines", async ({ page }) => {
-    // DB is clean — only one red and one white
     await apiAddToCellar((await apiCreateWine({ name: "Red Wine Filter", color: "red" })).id, 1);
     await apiAddToCellar((await apiCreateWine({ name: "White Wine Filter", color: "white" })).id, 1);
 

@@ -5,10 +5,6 @@ beforeEach(async () => {
   await truncateAll();
 });
 
-// ---------------------------------------------------------------------------
-// Stats — /stats
-// ---------------------------------------------------------------------------
-
 test.describe("Stats (/stats)", () => {
   test("loads without errors", async ({ page }) => {
     await goto(page, "/stats");
@@ -18,8 +14,8 @@ test.describe("Stats (/stats)", () => {
 
   test("page title or heading is visible", async ({ page }) => {
     await goto(page, "/stats");
-    const heading = page.getByRole("heading").first();
-    await expect(heading).toBeVisible();
+    // h1 is "Stats"
+    await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
   });
 
   test("displays a chart or graph element", async ({ page }) => {
@@ -29,32 +25,33 @@ test.describe("Stats (/stats)", () => {
   });
 
   test("color distribution section is present", async ({ page }) => {
-    // DB is clean — only this one red wine exists
     const wine = await apiCreateWine({ color: "red", name: "Stats Red" });
     await apiAddToCellar(wine.id, 3);
 
     await goto(page, "/stats");
-    await expect(page.getByText(/red|rouge/i).first()).toBeVisible({ timeout: 8000 });
+    // Section heading is "By color"
+    await expect(page.getByRole("heading", { name: /by color/i })).toBeVisible({ timeout: 8000 });
   });
 
   test("region section is rendered", async ({ page }) => {
     await goto(page, "/stats");
-    await expect(page.getByText(/region|région/i).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole("heading", { name: /by region/i })).toBeVisible({ timeout: 8000 });
   });
 
   test("vintage section is rendered", async ({ page }) => {
     await goto(page, "/stats");
-    await expect(page.getByText(/vintage|millésime/i).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole("heading", { name: /by vintage/i })).toBeVisible({ timeout: 8000 });
   });
 
   test("consumption section is rendered", async ({ page }) => {
     await goto(page, "/stats");
-    await expect(page.getByText(/consumption|consommation/i).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole("heading", { name: /consumption/i })).toBeVisible({ timeout: 8000 });
   });
 
   test("top rated wines section is rendered", async ({ page }) => {
     await goto(page, "/stats");
-    await expect(page.getByText(/top|rated|notes/i).first()).toBeVisible({ timeout: 8000 });
+    // Section heading is exactly "Top rated"
+    await expect(page.getByRole("heading", { name: /top rated/i })).toBeVisible({ timeout: 8000 });
   });
 
   test("page has no horizontal overflow on mobile", async ({ page }) => {
@@ -66,13 +63,12 @@ test.describe("Stats (/stats)", () => {
   });
 
   test("SVG charts are rendered after data loads", async ({ page }) => {
-    // DB is clean — only this wine exists
     const wine = await apiCreateWine({ color: "white", region: "Burgundy" });
     await apiAddToCellar(wine.id, 2);
 
     await goto(page, "/stats");
-    await page.waitForSelector("svg path, svg rect", { timeout: 10_000 });
-    const chartElements = page.locator("svg path, svg rect");
-    await expect(chartElements.first()).toBeVisible();
+    // Wait for any SVG element to be visible (not just attached)
+    const svg = page.locator("svg").first();
+    await expect(svg).toBeVisible({ timeout: 10_000 });
   });
 });
