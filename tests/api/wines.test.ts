@@ -156,9 +156,9 @@ describe("GET /api/wines/{id}", () => {
     expect(res.body.error).toBeTruthy();
   });
 
-  it("returns 404 for a malformed UUID", async () => {
+  it("returns 400 for a malformed UUID", async () => {
     const res = await api.get("/api/wines/not-a-uuid");
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
   });
 });
 

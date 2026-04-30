@@ -67,6 +67,16 @@ func (h *WineHandler) Get(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, wine)
 }
 
+var validColors = map[string]bool{
+	"red": true, "white": true, "rosé": true, "sparkling": true,
+	"dessert": true, "orange": true, "yellow": true,
+}
+
+var validStatuses = map[string]bool{
+	"pending_recognition": true, "recognized": true, "needs_review": true,
+	"enriched": true, "validated": true, "failed": true,
+}
+
 func (h *WineHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var wine models.Wine
 	if err := json.NewDecoder(r.Body).Decode(&wine); err != nil {
@@ -75,6 +85,10 @@ func (h *WineHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if wine.Name == "" {
 		jsonError(w, "name is required", http.StatusBadRequest)
+		return
+	}
+	if wine.Color != "" && !validColors[wine.Color] {
+		jsonError(w, "invalid color: must be one of red, white, rosé, sparkling, dessert, orange, yellow", http.StatusBadRequest)
 		return
 	}
 	wine.Status = "validated"
@@ -147,6 +161,10 @@ func (h *WineHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.Delete(r.Context(), id); err != nil {
+		if err.Error() == "not found" {
+			jsonError(w, "wine not found", http.StatusNotFound)
+			return
+		}
 		jsonError(w, "failed to delete wine", http.StatusInternalServerError)
 		return
 	}
@@ -266,6 +284,10 @@ func (h *WineHandler) UpdateRecognition(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.repo.UpdateRecognition(r.Context(), id, &req, status); err != nil {
+		if err.Error() == "not found" {
+			jsonError(w, "wine not found", http.StatusNotFound)
+			return
+		}
 		jsonError(w, fmt.Sprintf("failed to update recognition: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -301,6 +323,10 @@ func (h *WineHandler) UpdateEnrichment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.UpdateEnrichment(r.Context(), id, &req); err != nil {
+		if err.Error() == "not found" {
+			jsonError(w, "wine not found", http.StatusNotFound)
+			return
+		}
 		jsonError(w, fmt.Sprintf("failed to update enrichment: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -323,7 +349,15 @@ func (h *WineHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "status is required", http.StatusBadRequest)
 		return
 	}
+	if !validStatuses[req.Status] {
+		jsonError(w, "invalid status value", http.StatusBadRequest)
+		return
+	}
 	if err := h.repo.UpdateStatus(r.Context(), id, req.Status); err != nil {
+		if err.Error() == "not found" {
+			jsonError(w, "wine not found", http.StatusNotFound)
+			return
+		}
 		jsonError(w, "failed to update status", http.StatusInternalServerError)
 		return
 	}

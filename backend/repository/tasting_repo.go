@@ -104,11 +104,17 @@ func (r *tastingRepo) GetPending(ctx context.Context) ([]*models.PendingRating, 
 }
 
 func (r *tastingRepo) Update(ctx context.Context, note *models.TastingNote) error {
-	_, err := r.db.Exec(ctx, `
+	tag, err := r.db.Exec(ctx, `
 		UPDATE tasting_notes SET rating=$1, comment=$2, tasted_at=$3 WHERE id=$4`,
 		note.Rating, note.Comment, note.TastedAt, note.ID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
 }
 
 func (r *tastingRepo) MarkRated(ctx context.Context, consumptionID uuid.UUID) error {

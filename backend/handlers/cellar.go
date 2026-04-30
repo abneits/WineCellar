@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"wine-cellar/models"
 	"wine-cellar/repository"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type CellarHandler struct {
@@ -26,6 +29,10 @@ func (h *CellarHandler) Add(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.WineID == (uuid.UUID{}) {
+		jsonError(w, "wine_id is required", http.StatusBadRequest)
+		return
+	}
 	if req.Quantity < 1 {
 		jsonError(w, "quantity must be at least 1", http.StatusBadRequest)
 		return
@@ -39,6 +46,11 @@ func (h *CellarHandler) Add(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.Add(r.Context(), entry); err != nil {
 		log.Printf("ERROR add to cellar (wine_id=%s): %v", req.WineID, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			jsonError(w, "wine not found", http.StatusBadRequest)
+			return
+		}
 		jsonError(w, "failed to add to cellar", http.StatusInternalServerError)
 		return
 	}
@@ -89,6 +101,10 @@ func (h *CellarHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.Delete(r.Context(), id); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			jsonError(w, "entry not found", http.StatusNotFound)
+			return
+		}
 		jsonError(w, "failed to delete entry", http.StatusInternalServerError)
 		return
 	}
@@ -110,7 +126,12 @@ func (h *CellarHandler) Consume(w http.ResponseWriter, r *http.Request) {
 		req.Quantity = 1
 	}
 	if err := h.repo.Consume(r.Context(), id, &req); err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		msg := err.Error()
+		if strings.Contains(msg, "no rows") || strings.Contains(msg, "not found") {
+			jsonError(w, "cellar entry not found", http.StatusNotFound)
+			return
+		}
+		jsonError(w, msg, http.StatusConflict)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

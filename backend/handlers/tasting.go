@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"wine-cellar/models"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 
@@ -46,6 +49,11 @@ func (h *TastingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		note.TastedAt = time.Now()
 	}
 	if err := h.repo.Create(r.Context(), note); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			jsonError(w, "wine not found", http.StatusBadRequest)
+			return
+		}
 		jsonError(w, "failed to save tasting note", http.StatusInternalServerError)
 		return
 	}
@@ -106,8 +114,16 @@ func (h *TastingHandler) Update(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	if note.Rating < 1 || note.Rating > 5 {
+		jsonError(w, "rating must be between 1 and 5", http.StatusBadRequest)
+		return
+	}
 	note.ID = id
 	if err := h.repo.Update(r.Context(), &note); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			jsonError(w, "tasting note not found", http.StatusNotFound)
+			return
+		}
 		jsonError(w, "failed to update tasting note", http.StatusInternalServerError)
 		return
 	}

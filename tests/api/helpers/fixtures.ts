@@ -213,15 +213,14 @@ export function recognitionPayload(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 function minimalJpeg(): Uint8Array {
-  // A valid 1×1 white JPEG, base64 encoded
+  // Standard 1×1 white JPEG — verified decodable by Go's image/jpeg package
   const b64 =
-    "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U" +
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U" +
     "HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgN" +
     "DRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy" +
-    "MjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUE/8QAIhAA" +
-    "AgIBBAMAAAAAAAAAAAAAAQIDBAUREiExQf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEA" +
-    "AAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwXi9p2nYa1aoxzStGpPlZuSST+5JNk8nk" +
-    "k8n3oAKAP//Z";
+    "MjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAA" +
+    "AAAAAAAAAAAAAP/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA" +
+    "/9oADAMBAAIRAxEAPwCwAB//2Q==";
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {

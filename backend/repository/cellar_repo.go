@@ -54,8 +54,14 @@ func (r *cellarRepo) Update(ctx context.Context, entry *models.CellarEntry) erro
 }
 
 func (r *cellarRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := r.db.Exec(ctx, "DELETE FROM cellar_entries WHERE id = $1", id)
-	return err
+	tag, err := r.db.Exec(ctx, "DELETE FROM cellar_entries WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
 }
 
 func (r *cellarRepo) Consume(ctx context.Context, entryID uuid.UUID, req *models.ConsumeRequest) error {

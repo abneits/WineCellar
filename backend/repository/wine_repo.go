@@ -164,7 +164,7 @@ func (r *wineRepo) List(ctx context.Context, filter models.WineFilter) ([]*model
 	}
 	defer rows.Close()
 
-	var wines []*models.Wine
+	wines := make([]*models.Wine, 0)
 	for rows.Next() {
 		w := &models.Wine{}
 		if err := rows.Scan(
@@ -203,8 +203,14 @@ func (r *wineRepo) Update(ctx context.Context, wine *models.Wine) error {
 }
 
 func (r *wineRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := r.db.Exec(ctx, "DELETE FROM wines WHERE id = $1", id)
-	return err
+	tag, err := r.db.Exec(ctx, "DELETE FROM wines WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
 }
 
 // ListPending returns wines with the given status, including their base64-encoded full image.
@@ -244,7 +250,7 @@ func (r *wineRepo) ListPending(ctx context.Context, status string, limit int) ([
 // UpdateRecognition applies AI vision recognition results and sets the given status
 // (either "recognized" or "needs_review" depending on confidence / completeness).
 func (r *wineRepo) UpdateRecognition(ctx context.Context, id uuid.UUID, req *models.RecognitionUpdateRequest, status string) error {
-	_, err := r.db.Exec(ctx, `
+	tag, err := r.db.Exec(ctx, `
 		UPDATE wines SET
 			name=$1, producer=$2, vintage=$3, appellation=$4, region=$5, country=$6,
 			color=$7, grape_varieties=$8, alcohol_content=$9, description=$10,
@@ -256,12 +262,18 @@ func (r *wineRepo) UpdateRecognition(ctx context.Context, id uuid.UUID, req *mod
 		req.AIConfidence, req.AIRawResponse,
 		status, id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
 }
 
 // UpdateEnrichment applies web search / tasting data and advances status to "enriched".
 func (r *wineRepo) UpdateEnrichment(ctx context.Context, id uuid.UUID, req *models.EnrichmentUpdateRequest) error {
-	_, err := r.db.Exec(ctx, `
+	tag, err := r.db.Exec(ctx, `
 		UPDATE wines SET
 			tasting_notes=COALESCE($1, tasting_notes),
 			food_pairings=COALESCE($2, food_pairings),
@@ -277,13 +289,25 @@ func (r *wineRepo) UpdateEnrichment(ctx context.Context, id uuid.UUID, req *mode
 		req.EnrichmentConfidence,
 		id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
 }
 
 // UpdateStatus sets the wine's status field (e.g. "failed", "validated").
 func (r *wineRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status string) error {
-	_, err := r.db.Exec(ctx, `UPDATE wines SET status=$1, updated_at=NOW() WHERE id=$2`, status, id)
-	return err
+	tag, err := r.db.Exec(ctx, `UPDATE wines SET status=$1, updated_at=NOW() WHERE id=$2`, status, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
 }
 
 // generateThumbnail resizes imageData to targetWidth preserving aspect ratio, returns JPEG bytes.
